@@ -11,6 +11,12 @@ COPY system_files /
 # Ensure firstboot scripts are executable
 RUN chmod +x /etc/firstboot.d/*
 
+# Ensure hijacked script is executable and inject it into manager
+RUN chmod +x /usr/libexec/bazzite-flatpak-hijack.sh && \
+    chmod +x /usr/libexec/bazzite-flatpak-manager && \
+    echo 'source /usr/libexec/bazzite-flatpak-hijack.sh' >> /usr/libexec/bazzite-flatpak-manager
+
+
 # Fix terra-mesa GPG key issue by disabling GPG check for the repo
 RUN sed -i 's/^gpgcheck=1/gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true && \
     sed -i 's/^repo_gpgcheck=1/repo_gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true

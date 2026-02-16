@@ -28,3 +28,65 @@ disable = [
   "org.fedoraproject.Anaconda.Modules.Subscription",
   "org.fedoraproject.Anaconda.Modules.Timezone"
 ]
+
+
+# Copy firstboot-scripts.service into the ISO
+[[customizations.files]]
+path = "/etc/systemd/system/firstboot-scripts.service"
+src = "system_files/etc/systemd/system/firstboot-scripts.service"
+
+# Add all important system_files paths
+[[customizations.files]]
+path = "/etc/dconf/db/local.d/00-dracula-defaults"
+src = "system_files/etc/dconf/db/local.d/00-dracula-defaults"
+[[customizations.files]]
+path = "/etc/dconf/db/local.d/01-dracula-gtk"
+src = "system_files/etc/dconf/db/local.d/01-dracula-gtk"
+[[customizations.files]]
+path = "/etc/dunst/dunstrc"
+src = "system_files/etc/dunst/dunstrc"
+[[customizations.files]]
+path = "/etc/environment.d/99-darkmode.conf"
+src = "system_files/etc/environment.d/99-darkmode.conf"
+[[customizations.files]]
+path = "/etc/firstboot.d/10-flatpaks.sh"
+src = "system_files/etc/firstboot.d/10-flatpaks.sh"
+[[customizations.files]]
+path = "/etc/gtk-3.0/gtk.css"
+src = "system_files/etc/gtk-3.0/gtk.css"
+[[customizations.files]]
+path = "/etc/gtk-4.0/gtk.css"
+src = "system_files/etc/gtk-4.0/gtk.css"
+[[customizations.files]]
+path = "/etc/hypr/autostart.conf"
+src = "system_files/etc/hypr/autostart.conf"
+[[customizations.files]]
+path = "/etc/hypr/bindings.conf"
+src = "system_files/etc/hypr/bindings.conf"
+[[customizations.files]]
+path = "/etc/hypr/envs.conf"
+src = "system_files/etc/hypr/envs.conf"
+[[customizations.files]]
+path = "/etc/hypr/hypridle.conf"
+src = "system_files/etc/hypr/hypridle.conf"
+[[customizations.files]]
+path = "/etc/hypr/hyprland.conf"
+src = "system_files/etc/hypr/hyprland.conf"
+[[customizations.files]]
+path = "/etc/hypr/hyprlock.conf"
+src = "system_files/etc/hypr/hyprlock.conf"
+[[customizations.files]]
+path = "/etc/hypr/monitors.conf"
+src = "system_files/etc/hypr/monitors.conf"
+[[customizations.files]]
+path = "/etc/sddm.conf"
+src = "system_files/etc/sddm.conf"
+[[customizations.files]]
+path = "/etc/sddm.conf.d/10-theme.conf"
+src = "system_files/etc/sddm.conf.d/10-theme.conf"
+[[customizations.files]]
+path = "/etc/sddm.conf.d/kde_settings.conf"
+src = "system_files/etc/sddm.conf.d/kde_settings.conf"
+[[customizations.files]]
+path = "/etc/systemd/system/firstboot-scripts.service"
+src = "system_files/etc/systemd/system/firstboot-scripts.service"

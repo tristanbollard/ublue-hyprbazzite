@@ -59,7 +59,11 @@ sudoif command *args:
         if [[ "${UID}" -eq 0 ]]; then
             "$@"
         elif command -v sudo &>/dev/null; then
-            /usr/bin/sudo "$@" || exit 1
+            if [[ -n "${SUDO_PASSWORD:-}" ]]; then
+                echo "${SUDO_PASSWORD}" | /usr/bin/sudo -S "$@" || exit 1
+            else
+                /usr/bin/sudo "$@" || exit 1
+            fi
         else
             exit 1
         fi

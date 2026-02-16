@@ -8,6 +8,9 @@ FROM ghcr.io/ublue-os/bazzite:stable
 # Bazzite-style provisioning (ship defaults in /usr)
 COPY system_files /
 
+# Ensure firstboot scripts are executable
+RUN chmod +x /etc/firstboot.d/*
+
 # Fix terra-mesa GPG key issue by disabling GPG check for the repo
 RUN sed -i 's/^gpgcheck=1/gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true && \
     sed -i 's/^repo_gpgcheck=1/repo_gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true
@@ -141,7 +144,9 @@ RUN --mount=type=cache,dst=/var/cache \
 # Ensure Adwaita GTK and icon themes are present
 RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
-    dnf5 install -y adwaita-gtk2-theme adwaita-qt5 adwaita-qt6 adwaita-icon-theme || true
+    dnf5 install -y adwaita-gtk2-theme adwaita-qt5 adwaita-qt6 adwaita-icon-theme || true \
+    && git clone --depth=1 https://github.com/dracula/gtk.git /usr/share/themes/Dracula \
+    && rm -rf /usr/share/themes/Dracula/.git
 
 
 # Flatpak overrides for VS Code, OpenRGB, and Bitwarden moved to first boot script if needed.

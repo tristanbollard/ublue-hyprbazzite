@@ -42,6 +42,10 @@ done
 
 echo "[HIJACK] Internet connection established."
 
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -u critical "System Provisioning" "Flatpak installation in progress. Please keep internet connected."
+fi
+
 # 2. INSTALL CUSTOM APPS
 # Add your desired applications to this list
 CUSTOM_FLATPAKS=(
@@ -59,4 +63,8 @@ for app in "${CUSTOM_FLATPAKS[@]}"; do
     echo "[HIJACK] Installing $app..."
     flatpak install --system -y flathub "$app" || echo "[HIJACK] Failed to install $app"
 done
+
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send -u normal "System Provisioning" "Flatpak installation finished successfully."
+fi
 # --- HIJACKED INSTALLER LOGIC END ---

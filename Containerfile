@@ -8,9 +8,6 @@ FROM ghcr.io/ublue-os/bazzite:stable
 # Bazzite-style provisioning (ship defaults in /usr)
 COPY system_files /
 
-# Ensure firstboot scripts are executable
-RUN chmod +x /etc/firstboot.d/*
-
 # Ensure hijacked script is executable and inject it into manager
 RUN chmod +x /usr/libexec/bazzite-flatpak-hijack.sh && \
     chmod +x /usr/libexec/bazzite-flatpak-manager && \

@@ -103,7 +103,8 @@ flatpak override --system --filesystem=host --talk-name=org.freedesktop.Flatpak 
 if [ -n "$XDG_RUNTIME_DIR" ]; then
     mkdir -p "$XDG_RUNTIME_DIR/keyring"
 fi
-flatpak override --user --env=SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/keyring/ssh com.visualstudio.code
+flatpak override --system --env=SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/keyring/ssh com.visualstudio.code
+flatpak override --system --filesystem=home com.visualstudio.code
 
 # Final success notification (closes or updates the progress bar to 100%)
 NOTIFICATION_ID=$(send_progress_notification "System Provisioning" 100 "All Flatpaks installed successfully!" "normal" "$NOTIFICATION_ID")

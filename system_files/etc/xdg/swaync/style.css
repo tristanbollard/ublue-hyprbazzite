@@ -1,5 +1,11 @@
 /* Dracula Theme for SwayNotificationCenter */
 
+/* Force notification window background fully transparent */
+window#swaync-notification-window {
+    background-color: rgba(0,0,0,0) !important;
+    box-shadow: none !important;
+}
+
 /* Global Variables */
 @define-color base #282a36;
 @define-color mantle #1e1f29;

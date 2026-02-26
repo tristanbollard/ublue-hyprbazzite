@@ -74,7 +74,7 @@ CUSTOM_FLATPAKS=(
    "com.bitwarden.desktop"
    "org.openrgb.OpenRGB"
    "com.surfshark.Surfshark"
-   "io.github.zen_browser.zen"
+   "app.zen_browser.zen"
 )
 
 NOTIFICATION_ID=0

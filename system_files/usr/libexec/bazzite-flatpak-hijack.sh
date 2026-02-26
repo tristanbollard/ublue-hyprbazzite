@@ -99,11 +99,7 @@ done
 
 echo "[HIJACK] Applying VS Code overrides..."
 flatpak override --system --filesystem=host --talk-name=org.freedesktop.Flatpak com.visualstudio.code
-# Ensure the SSH agent socket directory exists for Flatpak VS Code
-if [ -n "$XDG_RUNTIME_DIR" ]; then
-    mkdir -p "$XDG_RUNTIME_DIR/keyring"
-fi
-flatpak override --system --env=SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/keyring/ssh com.visualstudio.code
+flatpak override --system --socket=ssh-auth com.visualstudio.code
 flatpak override --system --filesystem=home com.visualstudio.code
 
 echo "[HIJACK] Applying Discord Wayland override..."

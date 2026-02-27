@@ -114,6 +114,24 @@
   background-color: white;
   border-radius: 12px;
 }
+.image {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.body-image {
+  margin-top: 6px;
+  background-color: white;
+  border-radius: 12px;
+  max-width: 220px;
+  max-height: 120px;
+  object-fit: contain;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
 
 .summary {
   font-size: 16px;

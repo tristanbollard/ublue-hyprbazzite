@@ -353,6 +353,14 @@ _secure-boot-repair reset_bootupd_state="0":
     just sudoif efibootmgr -v || true
     just sudoif find "$esp_root/EFI" -maxdepth 3 -type f \( -iname 'bootx64.efi' -o -iname 'shimx64.efi' -o -iname 'grubx64.efi' -o -iname 'fbx64.efi' \) | sort || true
     mokutil --sb-state || true
+    if [[ -f /usr/share/tblue-secureboot/secureboot.der ]]; then
+        mokutil --test-key /usr/share/tblue-secureboot/secureboot.der >/dev/null 2>&1 || \
+            echo "MOK not enrolled: /usr/share/tblue-secureboot/secureboot.der (run: sudo mokutil --import /usr/share/tblue-secureboot/secureboot.der)"
+    fi
+    if [[ -f /usr/share/ublue-os/sb_pubkey.der ]]; then
+        mokutil --test-key /usr/share/ublue-os/sb_pubkey.der >/dev/null 2>&1 || \
+            echo "MOK not enrolled: /usr/share/ublue-os/sb_pubkey.der (run: sudo mokutil --import /usr/share/ublue-os/sb_pubkey.der)"
+    fi
 
 # Restore Secure Boot bootloader artifacts on the host
 [group('Utility')]

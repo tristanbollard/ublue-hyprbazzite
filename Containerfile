@@ -18,6 +18,10 @@ RUN build_commit="${SHA_HEAD_SHORT:-unknown}" && \
     grep -q '^TBLUE_BUILD_DATE=' /usr/lib/os-release || echo "TBLUE_BUILD_DATE=$build_date" >> /usr/lib/os-release && \
     sed -i "s/^PRETTY_NAME=\"\(.*\)\"$/PRETTY_NAME=\"\1 (${build_commit})\"/" /usr/lib/os-release
 
+RUN mkdir -p /usr/share/ublue-os && \
+    curl -fsSL -o /usr/share/ublue-os/sb_pubkey.der https://github.com/ublue-os/akmods/raw/main/certs/public_key.der && \
+    chmod 0644 /usr/share/ublue-os/sb_pubkey.der
+
 RUN openssl x509 -in /usr/share/tblue-secureboot/secureboot.pem -outform DER -out /usr/share/tblue-secureboot/secureboot.der && \
     chmod 0644 /usr/share/tblue-secureboot/secureboot.pem /usr/share/tblue-secureboot/secureboot.der && \
     chmod 0755 /usr/libexec/tblue-secureboot-firstboot && \

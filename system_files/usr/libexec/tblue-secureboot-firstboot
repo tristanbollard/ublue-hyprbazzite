@@ -77,31 +77,43 @@ if command -v bootupctl >/dev/null 2>&1; then
     bootupctl validate || true
 fi
 
-key_path=""
+key_paths=()
+
+tblue_key_path=""
 if [[ -f /usr/share/tblue-secureboot/secureboot.der ]]; then
-    key_path="/usr/share/tblue-secureboot/secureboot.der"
+    tblue_key_path="/usr/share/tblue-secureboot/secureboot.der"
 elif command -v openssl >/dev/null 2>&1; then
     for pem_source in /usr/share/tblue-secureboot/secureboot.pem /usr/share/tblue-secureboot/secureboot.crt; do
         if [[ -f "$pem_source" ]]; then
             mkdir -p /var/lib/tblue
             generated_key="/var/lib/tblue/secureboot.der"
             if openssl x509 -in "$pem_source" -outform DER -out "$generated_key" >/dev/null 2>&1; then
-                key_path="$generated_key"
+                tblue_key_path="$generated_key"
                 break
             fi
         fi
     done
 fi
 
-if command -v mokutil >/dev/null 2>&1 && [[ -n "$key_path" && -f "$key_path" ]]; then
-    if mokutil --test-key "$key_path" >/dev/null 2>&1; then
-        log "Secure Boot MOK key already enrolled."
-    else
-        log "MOK key is not enrolled. Import requires an interactive password, skipping automatic import."
-        log "Run manually: sudo mokutil --import $key_path"
-    fi
+if [[ -n "$tblue_key_path" && -f "$tblue_key_path" ]]; then
+    key_paths+=("$tblue_key_path")
+fi
+
+if [[ -f /usr/share/ublue-os/sb_pubkey.der ]]; then
+    key_paths+=("/usr/share/ublue-os/sb_pubkey.der")
+fi
+
+if command -v mokutil >/dev/null 2>&1 && [[ ${#key_paths[@]} -gt 0 ]]; then
+    for key_path in "${key_paths[@]}"; do
+        if mokutil --test-key "$key_path" >/dev/null 2>&1; then
+            log "Secure Boot MOK key already enrolled: $key_path"
+        else
+            log "MOK key is not enrolled. Import requires an interactive password, skipping automatic import."
+            log "Run manually: sudo mokutil --import $key_path"
+        fi
+    done
 elif command -v mokutil >/dev/null 2>&1; then
-    log "No usable Secure Boot certificate found at /usr/share/tblue-secureboot; skipping MOK key check."
+    log "No usable Secure Boot certificates found at /usr/share/tblue-secureboot or /usr/share/ublue-os; skipping MOK key check."
 fi
 
 mark_done

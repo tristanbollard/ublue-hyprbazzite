@@ -50,33 +50,53 @@ case ":$sys_id:" in
     ;;
 esac
 
-key_path=""
+mkdir -p /tmp/tblue-secureboot
+key_paths=()
+
+tblue_key=""
 if [ -f "$sysroot/usr/share/tblue-secureboot/secureboot.der" ]; then
-  key_path="$sysroot/usr/share/tblue-secureboot/secureboot.der"
+  tblue_key="$sysroot/usr/share/tblue-secureboot/secureboot.der"
 elif command -v openssl >/dev/null 2>&1; then
   for pem_source in "$sysroot/usr/share/tblue-secureboot/secureboot.pem" "$sysroot/usr/share/tblue-secureboot/secureboot.crt"; do
     if [ -f "$pem_source" ]; then
-      mkdir -p /tmp/tblue-secureboot
       generated_key="/tmp/tblue-secureboot/secureboot.der"
       if openssl x509 -in "$pem_source" -outform DER -out "$generated_key" >/dev/null 2>&1; then
-        key_path="$generated_key"
+        tblue_key="$generated_key"
         break
       fi
     fi
   done
 fi
+if [ -n "$tblue_key" ] && [ -f "$tblue_key" ]; then
+  key_paths+=("$tblue_key")
+fi
 
-if [ -z "$key_path" ]; then
-  echo "No usable secure boot key found in installed system; skipping enrollment."
+ublue_key=""
+if [ -f "$sysroot/usr/share/ublue-os/sb_pubkey.der" ]; then
+  ublue_key="$sysroot/usr/share/ublue-os/sb_pubkey.der"
+elif command -v curl >/dev/null 2>&1; then
+  fetched_ublue_key="/tmp/tblue-secureboot/ublue-sb_pubkey.der"
+  if curl -fsSL -o "$fetched_ublue_key" https://github.com/ublue-os/akmods/raw/main/certs/public_key.der; then
+    ublue_key="$fetched_ublue_key"
+  fi
+fi
+if [ -n "$ublue_key" ] && [ -f "$ublue_key" ]; then
+  key_paths+=("$ublue_key")
+fi
+
+if [ ${#key_paths[@]} -eq 0 ]; then
+  echo "No usable secure boot keys found in installed system; skipping enrollment."
   exit 0
 fi
 
 mokutil --timeout -1 || true
-if mokutil --test-key "$key_path" >/dev/null 2>&1; then
-  echo "Secure Boot key already enrolled."
-else
-  printf '%s\n%s\n' "$ENROLLMENT_PASSWORD" "$ENROLLMENT_PASSWORD" | mokutil --import "$key_path" || true
-fi
+for key_path in "${key_paths[@]}"; do
+  if mokutil --test-key "$key_path" >/dev/null 2>&1; then
+    echo "Secure Boot key already enrolled: $key_path"
+  else
+    printf '%s\n%s\n' "$ENROLLMENT_PASSWORD" "$ENROLLMENT_PASSWORD" | mokutil --import "$key_path" || true
+  fi
+done
 
 esp_root=""
 for candidate in "$sysroot/boot/efi" "$sysroot/efi" "$sysroot/boot"; do

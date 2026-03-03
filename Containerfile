@@ -88,6 +88,8 @@ RUN --mount=type=cache,dst=/var/cache \
     hyprlock \
     hypridle \
     hyprpaper \
+    uwsm \
+    hyprland-uwsm \
     swww \
     waybar \
     SwayNotificationCenter \

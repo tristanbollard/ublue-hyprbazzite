@@ -88,6 +88,7 @@ RUN --mount=type=cache,dst=/var/cache \
     hyprlock \
     hypridle \
     hyprpaper \
+    steam-devices \
     uwsm \
     hyprland-uwsm \
     swww \
@@ -120,8 +121,10 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     dnf5 install -y sddm && \
     mkdir -p /usr/share/wayland-sessions && \
-    printf '[Desktop Entry]\nName=Hyprland\nExec=start-hyprland -- --config /etc/hypr/hyprland.conf\nType=Application\n' > /usr/share/wayland-sessions/hyprland.desktop && \
+    printf '[Desktop Entry]\nName=Hyprland\nComment=Hyprland (direct)\nExec=start-hyprland -- --config /etc/hypr/hyprland.conf\nType=Application\nDesktopNames=Hyprland\n' > /usr/share/wayland-sessions/hyprland.desktop && \
+    printf '[Desktop Entry]\nName=Hyprland (UWSM)\nComment=Hyprland managed by Universal Wayland Session Manager\nExec=uwsm start -- start-hyprland -- --config /etc/hypr/hyprland.conf\nType=Application\nDesktopNames=Hyprland\n' > /usr/share/wayland-sessions/hyprland-uwsm.desktop && \
     chmod 0644 /usr/share/wayland-sessions/hyprland.desktop && \
+    chmod 0644 /usr/share/wayland-sessions/hyprland-uwsm.desktop && \
     chmod -R 0755 /usr/share/sddm/themes && \
     chmod 0644 /usr/share/sddm/themes/hyprlockish/* && \
     chmod +x /etc/hypr/scripts/*.sh && \

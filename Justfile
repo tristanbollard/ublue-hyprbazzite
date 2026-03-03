@@ -325,8 +325,12 @@ secure-boot-repair:
 
     just sudoif dnf5 reinstall -y shim-x64 grub2-efi-x64 grub2-efi-x64-modules grub2-efi-x64-cdboot bootupd
     just sudoif mkdir -p "$esp_root/EFI/BOOT"
-    just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
-    just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    if [[ "$shim_src" != "$esp_root/EFI/BOOT/BOOTX64.EFI" ]]; then
+        just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+    fi
+    if [[ "$fbx_src" != "$esp_root/EFI/BOOT/fbx64.efi" ]]; then
+        just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    fi
 
     just sudoif bootupctl backend install --auto --write-uuid --update-firmware /
     just sudoif bootupctl update || true
@@ -368,8 +372,12 @@ secure-boot-repair-hard:
     just sudoif dnf5 reinstall -y shim-x64 grub2-efi-x64 grub2-efi-x64-modules grub2-efi-x64-cdboot bootupd
 
     just sudoif mkdir -p "$esp_root/EFI/BOOT"
-    just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
-    just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    if [[ "$shim_src" != "$esp_root/EFI/BOOT/BOOTX64.EFI" ]]; then
+        just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+    fi
+    if [[ "$fbx_src" != "$esp_root/EFI/BOOT/fbx64.efi" ]]; then
+        just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    fi
 
     if [[ -f /boot/bootupd-state.json ]]; then
         just sudoif rm -vf /boot/bootupd-state.json

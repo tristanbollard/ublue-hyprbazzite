@@ -19,8 +19,12 @@ if [ -d /sys/firmware/efi ]; then
 
     if [ -n "$shim_src" ] && [ -n "$fbx_src" ] && [ -f "$shim_src" ] && [ -f "$fbx_src" ]; then
       mkdir -p "$esp_root/EFI/BOOT"
-      cp -f "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
-      cp -f "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+      if [ "$shim_src" != "$esp_root/EFI/BOOT/BOOTX64.EFI" ]; then
+        cp -f "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+      fi
+      if [ "$fbx_src" != "$esp_root/EFI/BOOT/fbx64.efi" ]; then
+        cp -f "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+      fi
     fi
 
     if command -v bootupctl >/dev/null 2>&1; then

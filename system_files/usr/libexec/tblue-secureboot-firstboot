@@ -5,6 +5,18 @@ log() {
     echo "[tblue-secureboot-firstboot] $*"
 }
 
+copy_if_needed() {
+    local src="$1"
+    local dst="$2"
+
+    if [[ "$src" == "$dst" ]]; then
+        log "Skipping copy, source and destination are identical: $src"
+        return 0
+    fi
+
+    cp -f "$src" "$dst"
+}
+
 mark_done() {
     mkdir -p /var/lib/tblue
     touch /var/lib/tblue/secureboot-firstboot.done
@@ -32,8 +44,8 @@ fbx_src="$(rpm -ql shim-x64 2>/dev/null | grep -E '/fbx64\.efi$' | head -n1 || t
 
 if [[ -n "$shim_src" && -n "$fbx_src" && -f "$shim_src" && -f "$fbx_src" ]]; then
     mkdir -p "$esp_root/EFI/BOOT"
-    cp -f "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
-    cp -f "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    copy_if_needed "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+    copy_if_needed "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
     log "Updated fallback EFI binaries from shim package."
 else
     log "Could not find shim fallback sources from shim-x64 package."

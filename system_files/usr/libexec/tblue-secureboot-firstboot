@@ -57,7 +57,7 @@ if command -v bootupctl >/dev/null 2>&1; then
     bootupctl validate || true
 fi
 
-key_path="/usr/share/tblue-secureboot/secureboot.crt"
+key_path="/usr/share/tblue-secureboot/secureboot.der"
 if command -v mokutil >/dev/null 2>&1 && [[ -f "$key_path" ]]; then
     if mokutil --test-key "$key_path" >/dev/null 2>&1; then
         log "Secure Boot MOK key already enrolled."

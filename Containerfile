@@ -7,9 +7,10 @@ FROM ghcr.io/ublue-os/bazzite:stable
 
 # Bazzite-style provisioning (ship defaults in /usr)
 COPY system_files /
-COPY secure-boot-keys/secureboot.crt /usr/share/tblue-secureboot/secureboot.crt
+COPY secure-boot-keys/secureboot.crt /usr/share/tblue-secureboot/secureboot.pem
 
-RUN chmod 0644 /usr/share/tblue-secureboot/secureboot.crt && \
+RUN openssl x509 -in /usr/share/tblue-secureboot/secureboot.pem -outform DER -out /usr/share/tblue-secureboot/secureboot.der && \
+    chmod 0644 /usr/share/tblue-secureboot/secureboot.pem /usr/share/tblue-secureboot/secureboot.der && \
     chmod 0755 /usr/libexec/tblue-secureboot-firstboot && \
     systemctl enable tblue-secureboot-firstboot.service
 

@@ -13,6 +13,34 @@ contents = """
 %post
 bootc switch --mutate-in-place --transport registry ghcr.io/tristanbollard/tblue-bazzite:latest
 %end
+
+%post --log=/root/ks-post-secureboot.log
+set -euxo pipefail
+
+if [ -d /sys/firmware/efi ]; then
+  esp_root="/boot/efi"
+  if [ ! -d "$esp_root/EFI" ] && [ -d /efi/EFI ]; then
+    esp_root="/efi"
+  fi
+
+  if [ -d "$esp_root/EFI" ]; then
+    shim_src="$(rpm -ql shim-x64 | grep -E '/shimx64\.efi$' | head -n1 || true)"
+    fbx_src="$(rpm -ql shim-x64 | grep -E '/fbx64\.efi$' | head -n1 || true)"
+
+    if [ -n "$shim_src" ] && [ -n "$fbx_src" ] && [ -f "$shim_src" ] && [ -f "$fbx_src" ]; then
+      mkdir -p "$esp_root/EFI/BOOT"
+      cp -f "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+      cp -f "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    fi
+
+    if command -v bootupctl >/dev/null 2>&1; then
+      bootupctl backend install --auto --write-uuid --update-firmware / || true
+      bootupctl adopt-and-update || true
+      bootupctl validate || true
+    fi
+  fi
+fi
+%end
 """
 
 [customizations.installer.modules]

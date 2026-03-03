@@ -306,31 +306,84 @@ secure-boot-repair:
         exit 1
     fi
 
-    if [[ ! -d /boot/efi/EFI/fedora ]]; then
-        echo "Missing /boot/efi/EFI/fedora; cannot restore shim fallback files."
+    esp_root="/boot/efi"
+    if ! just sudoif test -d "$esp_root/EFI"; then
+        if just sudoif test -d /efi/EFI; then
+            esp_root="/efi"
+        else
+            echo "No EFI directory found at /boot/efi/EFI or /efi/EFI"
+            exit 1
+        fi
+    fi
+
+    shim_src="$(rpm -ql shim-x64 | grep -E '/shimx64\.efi$' | head -n1 || true)"
+    fbx_src="$(rpm -ql shim-x64 | grep -E '/fbx64\.efi$' | head -n1 || true)"
+    if [[ -z "$shim_src" || -z "$fbx_src" ]]; then
+        echo "Could not discover shim/fallback file paths from shim-x64 package"
         exit 1
     fi
 
     just sudoif dnf5 reinstall -y shim-x64 grub2-efi-x64 grub2-efi-x64-modules grub2-efi-x64-cdboot bootupd
-    just sudoif mkdir -p /boot/efi/EFI/BOOT
+    just sudoif mkdir -p "$esp_root/EFI/BOOT"
+    just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+    just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
 
-    if [[ -f /boot/efi/EFI/fedora/shimx64.efi ]]; then
-        just sudoif cp -vf /boot/efi/EFI/fedora/shimx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
-    else
-        echo "shimx64.efi not found in /boot/efi/EFI/fedora"
-        exit 1
-    fi
-
-    if [[ -f /boot/efi/EFI/fedora/fbx64.efi ]]; then
-        just sudoif cp -vf /boot/efi/EFI/fedora/fbx64.efi /boot/efi/EFI/BOOT/fbx64.efi
-    else
-        echo "fbx64.efi not found in /boot/efi/EFI/fedora"
-        exit 1
-    fi
-
+    just sudoif bootupctl backend install --auto --write-uuid --update-firmware /
     just sudoif bootupctl update || true
+    just sudoif bootupctl validate || true
+    just sudoif bootupctl status || true
+    just sudoif efibootmgr -v || true
+    just sudoif find /boot/efi/EFI -maxdepth 3 -type f \( -iname 'bootx64.efi' -o -iname 'shimx64.efi' -o -iname 'grubx64.efi' -o -iname 'fbx64.efi' \) | sort || true
     mokutil --sb-state || true
-    echo "Secure Boot artifacts restored. Reboot and re-enable Secure Boot in firmware if needed."
+    echo "Secure Boot artifacts restored. Reboot, enable Secure Boot in firmware, and test boot."
+
+# Aggressive recovery for bad shim signature: reset fallback files and force bootupd reinstall
+[group('Utility')]
+secure-boot-repair-hard:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [[ ! -d /sys/firmware/efi ]]; then
+        echo "System is not booted in UEFI mode; Secure Boot repair is not applicable."
+        exit 1
+    fi
+
+    esp_root="/boot/efi"
+    if ! just sudoif test -d "$esp_root/EFI"; then
+        if just sudoif test -d /efi/EFI; then
+            esp_root="/efi"
+        else
+            echo "No EFI directory found at /boot/efi/EFI or /efi/EFI"
+            exit 1
+        fi
+    fi
+
+    shim_src="$(rpm -ql shim-x64 | grep -E '/shimx64\.efi$' | head -n1 || true)"
+    fbx_src="$(rpm -ql shim-x64 | grep -E '/fbx64\.efi$' | head -n1 || true)"
+    if [[ -z "$shim_src" || -z "$fbx_src" ]]; then
+        echo "Could not discover shim/fallback file paths from shim-x64 package"
+        exit 1
+    fi
+
+    just sudoif dnf5 reinstall -y shim-x64 grub2-efi-x64 grub2-efi-x64-modules grub2-efi-x64-cdboot bootupd
+
+    just sudoif mkdir -p "$esp_root/EFI/BOOT"
+    just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+    just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+
+    if [[ -f /boot/bootupd-state.json ]]; then
+        just sudoif rm -vf /boot/bootupd-state.json
+    fi
+
+    just sudoif bootupctl backend install --auto --write-uuid --update-firmware /
+    just sudoif bootupctl adopt-and-update || true
+    just sudoif bootupctl validate || true
+    just sudoif bootupctl status || true
+    just sudoif efibootmgr -v || true
+    just sudoif find /boot/efi/EFI -maxdepth 3 -type f \( -iname 'bootx64.efi' -o -iname 'shimx64.efi' -o -iname 'grubx64.efi' -o -iname 'fbx64.efi' \) | sort || true
+    mokutil --sb-state || true
+
+    echo "Hard Secure Boot repair completed. Reboot and test with Secure Boot enabled."
 
 
 # Runs shell check on all Bash scripts

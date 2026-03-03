@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+log() {
+    echo "[tblue-secureboot-firstboot] $*"
+}
+
+mark_done() {
+    mkdir -p /var/lib/tblue
+    touch /var/lib/tblue/secureboot-firstboot.done
+}
+
+if [[ ! -d /sys/firmware/efi ]]; then
+    log "Not booted in UEFI mode; skipping."
+    mark_done
+    exit 0
+fi
+
+esp_root="/boot/efi"
+if [[ ! -d "$esp_root/EFI" ]]; then
+    if [[ -d /efi/EFI ]]; then
+        esp_root="/efi"
+    else
+        log "No EFI directory found at /boot/efi/EFI or /efi/EFI; skipping."
+        mark_done
+        exit 0
+    fi
+fi
+
+shim_src="$(rpm -ql shim-x64 2>/dev/null | grep -E '/shimx64\.efi$' | head -n1 || true)"
+fbx_src="$(rpm -ql shim-x64 2>/dev/null | grep -E '/fbx64\.efi$' | head -n1 || true)"
+
+if [[ -n "$shim_src" && -n "$fbx_src" && -f "$shim_src" && -f "$fbx_src" ]]; then
+    mkdir -p "$esp_root/EFI/BOOT"
+    cp -f "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+    cp -f "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    log "Updated fallback EFI binaries from shim package."
+else
+    log "Could not find shim fallback sources from shim-x64 package."
+fi
+
+if command -v bootupctl >/dev/null 2>&1; then
+    bootupctl backend install --auto --write-uuid --update-firmware / || true
+    bootupctl adopt-and-update || true
+    bootupctl validate || true
+fi
+
+key_path="/usr/share/tblue-secureboot/secureboot.crt"
+if command -v mokutil >/dev/null 2>&1 && [[ -f "$key_path" ]]; then
+    if mokutil --test-key "$key_path" >/dev/null 2>&1; then
+        log "Secure Boot MOK key already enrolled."
+    else
+        log "MOK key is not enrolled. Import requires an interactive password, skipping automatic import."
+        log "Run manually: sudo mokutil --import $key_path"
+    fi
+fi
+
+mark_done
+log "Completed."

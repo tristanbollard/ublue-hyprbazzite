@@ -1,0 +1,11 @@
+[Unit]
+Description=TBlue Secure Boot first-boot repair
+After=local-fs.target
+ConditionPathExists=!/var/lib/tblue/secureboot-firstboot.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tblue-secureboot-firstboot
+
+[Install]
+WantedBy=multi-user.target

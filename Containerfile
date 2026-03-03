@@ -7,6 +7,11 @@ FROM ghcr.io/ublue-os/bazzite:stable
 
 # Bazzite-style provisioning (ship defaults in /usr)
 COPY system_files /
+COPY secure-boot-keys/secureboot.crt /usr/share/tblue-secureboot/secureboot.crt
+
+RUN chmod 0644 /usr/share/tblue-secureboot/secureboot.crt && \
+    chmod 0755 /usr/libexec/tblue-secureboot-firstboot && \
+    systemctl enable tblue-secureboot-firstboot.service
 
 
 # Fix terra-mesa GPG key issue by disabling GPG check for the repo

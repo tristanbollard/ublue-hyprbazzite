@@ -92,9 +92,11 @@ build $target_image=image_name $tag=default_tag:
     #!/usr/bin/env bash
 
     BUILD_ARGS=()
-    if [[ -z "$(git status -s)" ]]; then
-        BUILD_ARGS+=("--build-arg" "SHA_HEAD_SHORT=$(git rev-parse --short HEAD)")
+    git_head_short="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    if [[ -n "$(git status -s)" ]]; then
+        git_head_short="${git_head_short}-dirty"
     fi
+    BUILD_ARGS+=("--build-arg" "SHA_HEAD_SHORT=${git_head_short}")
 
     podman build \
         "${BUILD_ARGS[@]}" \
@@ -295,9 +297,9 @@ spawn-vm rebuild="0" type="qcow2" ram="6G":
       --vsock=false --pass-ssh-key=false \
       -i ./output/**/*.{{ type }}
 
-# Reinstall and restore Secure Boot bootloader artifacts on the host
-[group('Utility')]
-secure-boot-repair:
+# Shared Secure Boot repair implementation for bootc systems
+[private]
+_secure-boot-repair reset_bootupd_state="0":
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -306,91 +308,66 @@ secure-boot-repair:
         exit 1
     fi
 
-    esp_root="/boot/efi"
-    if ! just sudoif test -d "$esp_root/EFI"; then
-        if just sudoif test -d /efi/EFI; then
-            esp_root="/efi"
-        else
-            echo "No EFI directory found at /boot/efi/EFI or /efi/EFI"
-            exit 1
+    esp_root=""
+    for candidate in /boot/efi /efi /boot; do
+        if [[ -d "$candidate/EFI" ]]; then
+            esp_root="$candidate"
+            break
         fi
+        if findmnt -n -o FSTYPE --target "$candidate" 2>/dev/null | grep -qiE 'vfat|fat|msdos'; then
+            esp_root="$candidate"
+            break
+        fi
+    done
+
+    if [[ -z "$esp_root" ]]; then
+        echo "No EFI partition found under /boot/efi, /efi, or /boot."
+        exit 1
     fi
 
+    just sudoif mkdir -p "$esp_root/EFI/BOOT" "$esp_root/EFI/fedora"
+
     shim_src="$(rpm -ql shim-x64 | grep -E '/shimx64\.efi$' | head -n1 || true)"
+    shim_vendor_src="$(rpm -ql shim-x64 | grep -E '/shim\.efi$' | head -n1 || true)"
     fbx_src="$(rpm -ql shim-x64 | grep -E '/fbx64\.efi$' | head -n1 || true)"
-    if [[ -z "$shim_src" || -z "$fbx_src" ]]; then
+    if [[ -z "$shim_src" || -z "$fbx_src" || ! -f "$shim_src" || ! -f "$fbx_src" ]]; then
         echo "Could not discover shim/fallback file paths from shim-x64 package"
         exit 1
     fi
 
-    just sudoif dnf5 reinstall -y shim-x64 grub2-efi-x64 grub2-efi-x64-modules grub2-efi-x64-cdboot bootupd
-    just sudoif mkdir -p "$esp_root/EFI/BOOT"
-    if [[ "$shim_src" != "$esp_root/EFI/BOOT/BOOTX64.EFI" ]]; then
-        just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
-    fi
-    if [[ "$fbx_src" != "$esp_root/EFI/BOOT/fbx64.efi" ]]; then
-        just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
+    just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
+    just sudoif cp -vf "$shim_src" "$esp_root/EFI/fedora/shimx64.efi"
+    if [[ -n "$shim_vendor_src" && -f "$shim_vendor_src" ]]; then
+        just sudoif cp -vf "$shim_vendor_src" "$esp_root/EFI/fedora/shim.efi"
     fi
 
-    just sudoif bootupctl backend install --auto --write-uuid --update-firmware /
-    just sudoif bootupctl update || true
-    just sudoif bootupctl validate || true
-    just sudoif bootupctl status || true
-    just sudoif efibootmgr -v || true
-    just sudoif find /boot/efi/EFI -maxdepth 3 -type f \( -iname 'bootx64.efi' -o -iname 'shimx64.efi' -o -iname 'grubx64.efi' -o -iname 'fbx64.efi' \) | sort || true
-    mokutil --sb-state || true
-    echo "Secure Boot artifacts restored. Reboot, enable Secure Boot in firmware, and test boot."
-
-# Aggressive recovery for bad shim signature: reset fallback files and force bootupd reinstall
-[group('Utility')]
-secure-boot-repair-hard:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    if [[ ! -d /sys/firmware/efi ]]; then
-        echo "System is not booted in UEFI mode; Secure Boot repair is not applicable."
-        exit 1
-    fi
-
-    esp_root="/boot/efi"
-    if ! just sudoif test -d "$esp_root/EFI"; then
-        if just sudoif test -d /efi/EFI; then
-            esp_root="/efi"
-        else
-            echo "No EFI directory found at /boot/efi/EFI or /efi/EFI"
-            exit 1
-        fi
-    fi
-
-    shim_src="$(rpm -ql shim-x64 | grep -E '/shimx64\.efi$' | head -n1 || true)"
-    fbx_src="$(rpm -ql shim-x64 | grep -E '/fbx64\.efi$' | head -n1 || true)"
-    if [[ -z "$shim_src" || -z "$fbx_src" ]]; then
-        echo "Could not discover shim/fallback file paths from shim-x64 package"
-        exit 1
-    fi
-
-    just sudoif dnf5 reinstall -y shim-x64 grub2-efi-x64 grub2-efi-x64-modules grub2-efi-x64-cdboot bootupd
-
-    just sudoif mkdir -p "$esp_root/EFI/BOOT"
-    if [[ "$shim_src" != "$esp_root/EFI/BOOT/BOOTX64.EFI" ]]; then
-        just sudoif cp -vf "$shim_src" "$esp_root/EFI/BOOT/BOOTX64.EFI"
-    fi
-    if [[ "$fbx_src" != "$esp_root/EFI/BOOT/fbx64.efi" ]]; then
-        just sudoif cp -vf "$fbx_src" "$esp_root/EFI/BOOT/fbx64.efi"
-    fi
-
-    if [[ -f /boot/bootupd-state.json ]]; then
+    if [[ "{{ reset_bootupd_state }}" == "1" && -f /boot/bootupd-state.json ]]; then
         just sudoif rm -vf /boot/bootupd-state.json
     fi
 
-    just sudoif bootupctl backend install --auto --write-uuid --update-firmware /
+    just sudoif bootupctl update || true
     just sudoif bootupctl adopt-and-update || true
     just sudoif bootupctl validate || true
     just sudoif bootupctl status || true
     just sudoif efibootmgr -v || true
-    just sudoif find /boot/efi/EFI -maxdepth 3 -type f \( -iname 'bootx64.efi' -o -iname 'shimx64.efi' -o -iname 'grubx64.efi' -o -iname 'fbx64.efi' \) | sort || true
+    just sudoif find "$esp_root/EFI" -maxdepth 3 -type f \( -iname 'bootx64.efi' -o -iname 'shimx64.efi' -o -iname 'grubx64.efi' -o -iname 'fbx64.efi' \) | sort || true
     mokutil --sb-state || true
 
+# Restore Secure Boot bootloader artifacts on the host
+[group('Utility')]
+secure-boot-repair:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just _secure-boot-repair 0
+    echo "Secure Boot artifacts restored. Reboot, enable Secure Boot in firmware, and test boot."
+
+# Aggressive recovery path for bad shim signature
+[group('Utility')]
+secure-boot-repair-hard:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just _secure-boot-repair 1
     echo "Hard Secure Boot repair completed. Reboot and test with Secure Boot enabled."
 
 

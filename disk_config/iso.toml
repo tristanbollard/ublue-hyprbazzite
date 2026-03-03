@@ -31,6 +31,12 @@ if [ -z "$sysroot" ]; then
   exit 0
 fi
 
+build_commit="$(awk -F= '/^TBLUE_GIT_COMMIT=/{gsub(/"/,"",$2);print $2}' "$sysroot/usr/lib/os-release" 2>/dev/null | head -n1 || true)"
+if [ -n "$build_commit" ]; then
+  echo "Installer payload commit: $build_commit"
+  echo "TBlue Installer payload commit: $build_commit" > /etc/system-release
+fi
+
 if [ ! -d /sys/firmware/efi ]; then
   echo "EFI mode not detected. Skipping key enrollment."
   exit 0

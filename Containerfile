@@ -4,10 +4,19 @@ COPY build_files /
 
 # Base Image
 FROM ghcr.io/ublue-os/bazzite:stable
+ARG SHA_HEAD_SHORT=unknown
 
 # Bazzite-style provisioning (ship defaults in /usr)
 COPY system_files /
 COPY secure-boot-keys/secureboot.crt /usr/share/tblue-secureboot/secureboot.pem
+
+RUN build_commit="${SHA_HEAD_SHORT:-unknown}" && \
+    build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)" && \
+    mkdir -p /usr/share/tblue && \
+    printf 'TBLUE_GIT_COMMIT=%s\nTBLUE_BUILD_DATE=%s\n' "$build_commit" "$build_date" > /usr/share/tblue/build-info && \
+    grep -q '^TBLUE_GIT_COMMIT=' /usr/lib/os-release || echo "TBLUE_GIT_COMMIT=$build_commit" >> /usr/lib/os-release && \
+    grep -q '^TBLUE_BUILD_DATE=' /usr/lib/os-release || echo "TBLUE_BUILD_DATE=$build_date" >> /usr/lib/os-release && \
+    sed -i "s/^PRETTY_NAME=\"\(.*\)\"$/PRETTY_NAME=\"\1 (${build_commit})\"/" /usr/lib/os-release
 
 RUN openssl x509 -in /usr/share/tblue-secureboot/secureboot.pem -outform DER -out /usr/share/tblue-secureboot/secureboot.der && \
     chmod 0644 /usr/share/tblue-secureboot/secureboot.pem /usr/share/tblue-secureboot/secureboot.der && \

@@ -7,3 +7,7 @@ type = "ext4"
 mountpoint = "/"
 minsize = "20 GiB"
 type = "xfs"
+
+[[customizations.filesystem]]
+minsize = "8 GiB"
+type = "swap"

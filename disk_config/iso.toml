@@ -9,7 +9,7 @@ minsize = "1 GiB"
 type = "ext4"
 
 [customizations.installer.kickstart]
-contents = """
+contents = '''
 %post
 bootc switch --mutate-in-place --transport registry ghcr.io/tristanbollard/tblue-bazzite:latest
 %end
@@ -129,7 +129,7 @@ if [ -n "$esp_root" ]; then
   fi
 fi
 %end
-"""
+'''
 
 [customizations.installer.modules]
 enable = [

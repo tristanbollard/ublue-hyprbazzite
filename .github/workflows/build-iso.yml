@@ -107,15 +107,20 @@ jobs:
         # so the containers-storage reference below matches the image built above.
         run: |
           mkdir -p /tmp/iso-output
+          mkdir -p /tmp/iso-config
+          cp disk_config/iso.toml /tmp/iso-config/iso.toml
           sudo podman run \
             --rm \
             --privileged \
             --pull=newer \
             --security-opt label=type:unconfined_t \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
+            -v /tmp/iso-config:/config:ro \
             -v /tmp/iso-output:/output \
             quay.io/centos-bootc/bootc-image-builder:latest \
             --type iso \
+            --rootfs xfs \
+            --config /config/iso.toml \
             --output /output \
             containers-storage:localhost/${{ env.IMAGE_NAME }}:latest
 

@@ -82,6 +82,23 @@ jobs:
           tags: latest
           oci: false
 
+      - name: Make image available to root podman storage
+        run: |
+          IMAGE_REF="localhost/${{ env.IMAGE_NAME }}:latest"
+
+          # bootc-image-builder runs in a privileged container and reads host
+          # storage from /var/lib/containers/storage, so ensure root can see it.
+          if ! sudo podman image exists "$IMAGE_REF"; then
+            sudo podman pull "containers-storage:${IMAGE_REF}" || {
+              ARCHIVE="/tmp/${{ env.IMAGE_NAME }}-latest.ociarchive"
+              podman save --format oci-archive -o "$ARCHIVE" "$IMAGE_REF"
+              sudo podman load -i "$ARCHIVE"
+              sudo podman tag "$IMAGE_REF" "$IMAGE_REF" 2>/dev/null || true
+            }
+          fi
+
+          sudo podman image exists "$IMAGE_REF"
+
       - name: Build ISO with bootc-image-builder
         # buildah stores locally built images under the "localhost/" registry prefix,
         # so the containers-storage reference below matches the image built above.

@@ -30,7 +30,7 @@ jobs:
       )
 
     permissions:
-      contents: read
+      contents: write  # needed to create/update GitHub Releases
       packages: read
       pull-requests: write  # needed to post the 👍 reaction
 
@@ -131,3 +131,15 @@ jobs:
           path: /tmp/iso-output/
           retention-days: 7
           if-no-files-found: error
+
+      - name: Publish ISO as GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISO_FILE=$(find /tmp/iso-output -name '*.iso' | head -n1)
+          RELEASE_TAG="iso-$(date -u +'%Y%m%d-%H%M%S')"
+          gh release create "${RELEASE_TAG}" \
+            --repo "${{ github.repository }}" \
+            --title "ISO ${RELEASE_TAG}" \
+            --notes "Automated ISO build from commit ${{ github.sha }}." \
+            "${ISO_FILE}"

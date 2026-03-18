@@ -122,6 +122,10 @@ echo "[HIJACK] Applying Zen browser download fix..."
 # Allow Zen browser to access Downloads and host filesystem for file downloads
 flatpak override --system --filesystem=xdg-download --filesystem=host app.zen_browser.zen
 
+echo "[HIJACK] Applying OpenRGB Flatpak device/udev override..."
+# Allow OpenRGB Flatpak to access all devices and udev
+flatpak override --system --device=all --filesystem=host --filesystem=/run/udev:ro org.openrgb.OpenRGB
+
 echo "[HIJACK] Applying global font and theme overrides for all Flatpaks..."
 flatpak override --system --filesystem=xdg-config/fontconfig:ro
 flatpak override --system --filesystem=/usr/share/fonts:ro

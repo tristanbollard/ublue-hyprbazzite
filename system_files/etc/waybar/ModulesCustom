@@ -35,6 +35,12 @@
 		"tooltip": true,
 		"tooltip-format": "Power Menu",
 	},
+	"custom/keyboard": {
+		"format": "󰌌",
+		"on-click": "/etc/hypr/scripts/waybar-osk-click.sh",
+		"tooltip": true,
+		"tooltip-format": "On-screen keyboard\nClick: Open if closed, swap half if open",
+	},
 	"custom/quit": {
 		"format": "󰗼",
 		"on-click": "hyprctl dispatch exit",

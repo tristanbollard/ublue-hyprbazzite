@@ -82,6 +82,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     dnf5 -y copr enable sdegler/hyprland && \
     dnf5 -y copr enable erikreider/SwayNotificationCenter && \
+    dnf5 -y copr enable fed500/wvkbd && \
     dnf5 install -y \
     hyprland \
     hyprland-guiutils \
@@ -95,6 +96,7 @@ RUN --mount=type=cache,dst=/var/cache \
     waybar \
     SwayNotificationCenter \
     wofi \
+    wvkbd \
     xdg-desktop-portal-hyprland
 
 # Set zsh as default shell

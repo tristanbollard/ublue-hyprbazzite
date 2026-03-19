@@ -91,7 +91,7 @@ Wallpaper() {
         notify-send -u critical "TritonCtl" "No wallpapers found in $wall_dir"
         exit 1
     fi
-    
+
     local random_wall="${wall_files[$((RANDOM % ${#wall_files[@]}))]}"
 
     # Generate wallpaper list for Rofi

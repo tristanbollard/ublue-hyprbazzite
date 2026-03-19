@@ -28,7 +28,7 @@ if pgrep -x wvkbd >/dev/null 2>&1; then
 fi
 
 if command -v wvkbd-mobintl >/dev/null 2>&1; then
-    exec wvkbd-mobintl \
+    wvkbd-mobintl \
         --hidden \
         --non-exclusive \
         --fn "${WVKBD_FONT}" \
@@ -39,11 +39,12 @@ if command -v wvkbd-mobintl >/dev/null 2>&1; then
         --press "${WVKBD_PRESS}" \
         --press-sp "${WVKBD_PRESS_SP}" \
         --text "${WVKBD_TEXT}" \
-        --text-sp "${WVKBD_TEXT_SP}"
+        --text-sp "${WVKBD_TEXT_SP}" >/dev/null 2>&1 &
+    exit 0
 fi
 
 if command -v wvkbd >/dev/null 2>&1; then
-    exec wvkbd \
+    wvkbd \
         --hidden \
         --non-exclusive \
         --fn "${WVKBD_FONT}" \
@@ -54,7 +55,8 @@ if command -v wvkbd >/dev/null 2>&1; then
         --press "${WVKBD_PRESS}" \
         --press-sp "${WVKBD_PRESS_SP}" \
         --text "${WVKBD_TEXT}" \
-        --text-sp "${WVKBD_TEXT_SP}"
+        --text-sp "${WVKBD_TEXT_SP}" >/dev/null 2>&1 &
+    exit 0
 fi
 
 notify-send "On-screen keyboard" "wvkbd is not installed or not in PATH"

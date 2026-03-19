@@ -13,8 +13,8 @@ if pgrep -x wvkbd-mobintl >/dev/null 2>&1 || pgrep -x wvkbd >/dev/null 2>&1; the
     exec /etc/hypr/scripts/swap-osk-half.sh
 fi
 
-/etc/hypr/scripts/toggle-osk.sh >/dev/null 2>&1 &
-sleep 0.15
+/etc/hypr/scripts/toggle-osk.sh >/dev/null 2>&1
+sleep 0.3
 pkill -USR2 -x wvkbd-mobintl >/dev/null 2>&1 || true
 pkill -USR2 -x wvkbd >/dev/null 2>&1 || true
 

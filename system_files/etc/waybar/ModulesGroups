@@ -38,6 +38,7 @@
 			"transition-left-to-right": true
 		},
 		"modules": [
+			"custom/keyboard",
 			"temperature",
 			"cpu",
 			"power-profiles-daemon",
@@ -87,7 +88,6 @@
 			"custom/power",
 			"custom/lock",
 			"keyboard-state",
-			"custom/keyboard",
 		]
 	},
 	"group/notify": {

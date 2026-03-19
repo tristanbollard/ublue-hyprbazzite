@@ -27,5 +27,9 @@ if command -v hyprctl >/dev/null 2>&1; then
     fi
 fi
 
-pkill -RTMIN -x wvkbd-mobintl >/dev/null 2>&1 || true
-pkill -RTMIN -x wvkbd >/dev/null 2>&1 || true
+if pgrep -x wvkbd-mobintl >/dev/null 2>&1 || pgrep -x wvkbd >/dev/null 2>&1; then
+    pkill -x wvkbd-mobintl >/dev/null 2>&1 || true
+    pkill -x wvkbd >/dev/null 2>&1 || true
+    sleep 0.15
+    /etc/hypr/scripts/toggle-osk.sh >/dev/null 2>&1 || true
+fi

@@ -17,6 +17,10 @@ WVKBD_PRESS_SP="${WVKBD_PRESS_SP:-ff79c6}"
 WVKBD_TEXT="${WVKBD_TEXT:-f8f8f2}"
 WVKBD_TEXT_SP="${WVKBD_TEXT_SP:-f8f8f2}"
 WVKBD_ALPHA="${WVKBD_ALPHA:-230}"
+WVKBD_HEIGHT="${WVKBD_HEIGHT:-420}"
+WVKBD_HEIGHT_LANDSCAPE="${WVKBD_HEIGHT_LANDSCAPE:-320}"
+WVKBD_LAYERS="${WVKBD_LAYERS:-fullwide,special,emoji,nav}"
+WVKBD_LANDSCAPE_LAYERS="${WVKBD_LANDSCAPE_LAYERS:-landscape,landscapespecial,emoji,nav}"
 WVKBD_ANCHOR="${WVKBD_ANCHOR:-bottom}"
 WVKBD_STATE_FILE="${XDG_RUNTIME_DIR:-/tmp}/wvkbd-anchor"
 
@@ -67,7 +71,10 @@ start_hidden() {
     if ! is_running; then
         "${WVKBD_BIN}" \
             --hidden \
-            --non-exclusive \
+            -H "${WVKBD_HEIGHT}" \
+            -L "${WVKBD_HEIGHT_LANDSCAPE}" \
+            -l "${WVKBD_LAYERS}" \
+            --landscape-layers "${WVKBD_LANDSCAPE_LAYERS}" \
             --fn "${WVKBD_FONT}" \
             --alpha "${WVKBD_ALPHA}" \
             --bg "${WVKBD_BG}" \

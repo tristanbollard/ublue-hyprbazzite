@@ -38,7 +38,6 @@
 			"transition-left-to-right": true
 		},
 		"modules": [
-			"custom/keyboard",
 			"temperature",
 			"cpu",
 			"power-profiles-daemon",

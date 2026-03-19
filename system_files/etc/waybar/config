@@ -26,9 +26,9 @@
 	],
 	"modules-center": [
 		"group/app_drawer",
+		"custom/keyboard",
 		"custom/separator#dot-line",
 		"hyprland/workspaces#rw",
-		"user/keyboard",
 	],
 	"modules-right": [
 		"group/laptop",
@@ -36,7 +36,7 @@
 		"custom/separator#line",
 		"network",
 		"group/audio",
-		"user/headset-battery",
+		"custom/headset-battery",
 		"custom/separator#dot-line",
 		"mpris",
 		"group/notify",

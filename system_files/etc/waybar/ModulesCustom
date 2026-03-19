@@ -39,7 +39,14 @@
 		"format": "󰌌",
 		"on-click": "/etc/hypr/scripts/waybar-osk-click.sh",
 		"tooltip": true,
-		"tooltip-format": "On-screen keyboard\nClick: Open if closed, swap half if open",
+		"tooltip-format": "On-screen keyboard\nClick: Toggle open / close"
+	},
+	"custom/headset-battery": {
+		"format": "󰠇 {}%",
+		"exec": "/etc/hypr/scripts/TritonCtl.sh LogiBattery",
+		"interval": 5,
+		"on-click": "solaar",
+		"return-type": "integer"
 	},
 	"custom/quit": {
 		"format": "󰗼",

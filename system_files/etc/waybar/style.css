@@ -126,6 +126,7 @@ window#waybar.empty #window {
 #mpris,
 #network,
 #power-profiles-daemon,
+#custom-power-profiles-daemon,
 #pulseaudio,
 #custom-headset-battery,
 #pulseaudio-slider,

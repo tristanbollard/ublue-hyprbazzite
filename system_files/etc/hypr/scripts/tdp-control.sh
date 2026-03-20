@@ -22,27 +22,89 @@ MIN_TDP=15
 MAX_TDP=65
 STEP_TDP=1
 
+# Helper: check for ryzenadj
+has_ryzenadj() { command -v ryzenadj >/dev/null 2>&1; }
+
+# Helper: check for AMD PBO/eco-mode
+has_amdctl() { command -v amdctl >/dev/null 2>&1; }
+
+is_int() {
+    [[ "$1" =~ ^[0-9]+$ ]]
+}
+
+set_bounds_if_valid() {
+    local min="$1"
+    local max="$2"
+
+    if is_int "$min" && is_int "$max" && [ "$min" -gt 0 ] && [ "$max" -ge "$min" ]; then
+        MIN_TDP="$min"
+        MAX_TDP="$max"
+        return 0
+    fi
+    return 1
+}
+
+detect_bounds_from_sysfs() {
+    local min_file max_file min max
+
+    # Common powercap naming for modern AMD/Intel platforms
+    min_file=$(find /sys/class/powercap -type f -name 'constraint_0_min_power_uw' 2>/dev/null | head -n1)
+    max_file=$(find /sys/class/powercap -type f -name 'constraint_0_max_power_uw' 2>/dev/null | head -n1)
+    if [ -n "$min_file" ] && [ -n "$max_file" ]; then
+        min=$(( $(cat "$min_file" 2>/dev/null) / 1000000 ))
+        max=$(( $(cat "$max_file" 2>/dev/null) / 1000000 ))
+        set_bounds_if_valid "$min" "$max" && return 0
+    fi
+
+    # hwmon fallback when min/max are exported there
+    min_file=$(find /sys/class/hwmon -type f -name 'power1_cap_min' 2>/dev/null | head -n1)
+    max_file=$(find /sys/class/hwmon -type f -name 'power1_cap_max' 2>/dev/null | head -n1)
+    if [ -n "$min_file" ] && [ -n "$max_file" ]; then
+        min=$(( $(cat "$min_file" 2>/dev/null) / 1000000 ))
+        max=$(( $(cat "$max_file" 2>/dev/null) / 1000000 ))
+        set_bounds_if_valid "$min" "$max" && return 0
+    fi
+
+    return 1
+}
+
+detect_bounds_from_amdctl() {
+    local info min max
+    info=$(amdctl info 2>/dev/null || true)
+    min=$(echo "$info" | grep -i 'min power limit' | grep -Eo '[0-9]+' | head -n1)
+    max=$(echo "$info" | grep -i 'max power limit' | grep -Eo '[0-9]+' | head -n1)
+    set_bounds_if_valid "$min" "$max"
+}
+
+detect_bounds_from_ryzenadj() {
+    local info min max
+    info=$(ryzenadj --info 2>/dev/null || true)
+
+    # Prefer explicit min/max TDP hints when exported by the platform.
+    min=$(echo "$info" | grep -i 'min tdp' | grep -Eo '[0-9]+' | head -n1)
+    max=$(echo "$info" | grep -i 'max tdp' | grep -Eo '[0-9]+' | head -n1)
+    if set_bounds_if_valid "$min" "$max"; then
+        return 0
+    fi
+
+    # Fallback: if only an upper limit is discoverable, keep default minimum.
+    max=$(echo "$info" | grep -Ei 'stapm.*limit|slow.*limit|fast.*limit' | grep -Eo '[0-9]+' | sort -nr | head -n1)
+    if is_int "$max" && [ "$max" -gt "$MIN_TDP" ]; then
+        MAX_TDP="$max"
+        return 0
+    fi
+
+    return 1
+}
+
 # Try to detect TDP bounds from ryzenadj or amdctl
 detect_bounds() {
-    if has_ryzenadj; then
-        # Try to parse min/max from ryzenadj --info
-        local info=$(ryzenadj --info 2>/dev/null)
-        local min=$(echo "$info" | grep -i 'min tdp' | grep -o '[0-9]\+')
-        local max=$(echo "$info" | grep -i 'max tdp' | grep -o '[0-9]\+')
-        if [ -n "$min" ] && [ -n "$max" ]; then
-            MIN_TDP=$min
-            MAX_TDP=$max
-        fi
-    elif has_amdctl; then
-        # Try to parse min/max from amdctl info
-        local info=$(amdctl info 2>/dev/null)
-        local min=$(echo "$info" | grep -i 'min power limit' | grep -o '[0-9]\+')
-        local max=$(echo "$info" | grep -i 'max power limit' | grep -o '[0-9]\+')
-        if [ -n "$min" ] && [ -n "$max" ]; then
-            MIN_TDP=$min
-            MAX_TDP=$max
-        fi
-    fi
+    detect_bounds_from_sysfs && return
+    has_amdctl && detect_bounds_from_amdctl && return
+    has_ryzenadj && detect_bounds_from_ryzenadj && return
+
+    # Keep defaults when the platform does not expose bounds.
+    return 0
 }
 
 list_tdps() {
@@ -51,12 +113,6 @@ list_tdps() {
         echo "$w"
     done
 }
-
-# Helper: check for ryzenadj
-has_ryzenadj() { command -v ryzenadj >/dev/null 2>&1; }
-
-# Helper: check for AMD PBO/eco-mode
-has_amdctl() { command -v amdctl >/dev/null 2>&1; }
 
 get_tdp() {
     if has_ryzenadj; then
@@ -71,6 +127,18 @@ get_tdp() {
 
 set_tdp() {
     local tdp_watts="$1"
+    detect_bounds
+
+    if ! is_int "$tdp_watts"; then
+        echo "Invalid TDP value: '$tdp_watts' (must be a whole number in watts)"
+        exit 1
+    fi
+
+    if [ "$tdp_watts" -lt "$MIN_TDP" ] || [ "$tdp_watts" -gt "$MAX_TDP" ]; then
+        echo "Requested TDP ${tdp_watts}W is outside detected bounds: ${MIN_TDP}-${MAX_TDP}W"
+        exit 1
+    fi
+
     if has_ryzenadj; then
         sudo ryzenadj --stapm-limit=$((tdp_watts*1000)) --fast-limit=$((tdp_watts*1000)) --slow-limit=$((tdp_watts*1000))
         echo "Set TDP to $tdp_watts W (ryzenadj)"
@@ -84,15 +152,26 @@ set_tdp() {
 }
 
 set_profile() {
+    detect_bounds
+
     case "$1" in
         eco)
-            set_tdp "$ECO_TDP"
+            local eco="$ECO_TDP"
+            [ "$eco" -lt "$MIN_TDP" ] && eco="$MIN_TDP"
+            [ "$eco" -gt "$MAX_TDP" ] && eco="$MAX_TDP"
+            set_tdp "$eco"
             ;;
         balanced)
-            set_tdp "$BALANCED_TDP"
+            local balanced="$BALANCED_TDP"
+            [ "$balanced" -lt "$MIN_TDP" ] && balanced="$MIN_TDP"
+            [ "$balanced" -gt "$MAX_TDP" ] && balanced="$MAX_TDP"
+            set_tdp "$balanced"
             ;;
         performance)
-            set_tdp "$PERFORMANCE_TDP"
+            local perf="$PERFORMANCE_TDP"
+            [ "$perf" -lt "$MIN_TDP" ] && perf="$MIN_TDP"
+            [ "$perf" -gt "$MAX_TDP" ] && perf="$MAX_TDP"
+            set_tdp "$perf"
             ;;
         *)
             echo "Unknown profile: $1 (use eco, balanced, performance)"
@@ -114,7 +193,12 @@ case "$1" in
     list)
         list_tdps
         ;;
+    bounds)
+        detect_bounds
+        echo "${MIN_TDP}-${MAX_TDP}"
+        ;;
     *)
-        echo "Usage: $0 get | set <watts> | profile <eco|balanced|performance> | list"
+        echo "Usage: $0 get | set <watts> | profile <eco|balanced|performance> | list | bounds"
         exit 1
         ;;
+esac

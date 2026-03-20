@@ -7,9 +7,15 @@ TDP_SCRIPT="$SCRIPT_DIR/tdp-control.sh"
 
 # Get available TDP values
 TDP_LIST=$($TDP_SCRIPT list)
+BOUNDS=$($TDP_SCRIPT bounds 2>/dev/null || echo "auto")
+
+if [ -z "$TDP_LIST" ]; then
+    notify-send "TDP Selector" "No TDP values available on this system" 2>/dev/null || true
+    exit 1
+fi
 
 # Show selection menu (wofi/rofi/dmenu)
-SELECTED=$(echo "$TDP_LIST" | wofi --dmenu --width 300 --height 400 --prompt "Select TDP (W)")
+SELECTED=$(echo "$TDP_LIST" | wofi --dmenu --width 300 --height 400 --prompt "Select TDP (W) [$BOUNDS]")
 
 if [ -n "$SELECTED" ]; then
     $TDP_SCRIPT set "$SELECTED" | wofi --dmenu --width 400 --height 100 --prompt "TDP Set to $SELECTED W" || true

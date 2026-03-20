@@ -302,16 +302,12 @@
 			"󰤨"
 		]
 	},
-	"power-profiles-daemon": {
-		"format": "{icon} ",
-		"tooltip-format": "Power profile: {profile}\nDriver: {driver}",
-		"tooltip": true,
-		"format-icons": {
-			"default": "",
-			"performance": "",
-			"balanced": "",
-			"power-saver": ""
-		}
+	"custom/power-profiles-daemon": {
+		"return-type": "json",
+		"exec": "bash /etc/hypr/scripts/waybar-power-tdp-status.sh",
+		"interval": 2,
+		"on-click": "bash /etc/hypr/scripts/waybar-power-profile-cycle.sh",
+		"on-click-right": "bash /etc/hypr/scripts/waybar-tdp-selector-launch.sh"
 	},
 	"pulseaudio": {
 		"format": "{icon} {volume}%",

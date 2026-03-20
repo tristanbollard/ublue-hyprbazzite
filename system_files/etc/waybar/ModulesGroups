@@ -24,7 +24,7 @@
 		"orientation": "horizontal",
 		"modules": [
 			"cpu",
-			"power-profiles-daemon",
+			"custom/power-profiles-daemon",
 			"memory",
 			"temperature",
 			"disk",
@@ -40,7 +40,7 @@
 		"modules": [
 			"temperature",
 			"cpu",
-			"power-profiles-daemon",
+			"custom/power-profiles-daemon",
 			"memory",
 			"disk",
 		]

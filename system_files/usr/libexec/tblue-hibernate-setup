@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+log() {
+    echo "[tblue-hibernate-setup] $*"
+}
+
+mark_done() {
+    mkdir -p /var/lib/tblue
+    touch /var/lib/tblue/hibernate-setup.done
+}
+
+find_swap_device() {
+    local dev
+
+    dev=$(swapon --noheadings --raw --output NAME,TYPE 2>/dev/null | awk '$2 != "zram" {print $1; exit}')
+    if [[ -n "$dev" ]]; then
+        echo "$dev"
+        return 0
+    fi
+
+    dev=$(blkid -t TYPE=swap -o device 2>/dev/null | head -n1 || true)
+    if [[ -n "$dev" ]]; then
+        echo "$dev"
+        return 0
+    fi
+
+    return 1
+}
+
+add_resume_karg_if_needed() {
+    local karg="$1"
+
+    if command -v rpm-ostree >/dev/null 2>&1; then
+        local current
+        current=$(rpm-ostree kargs 2>/dev/null || true)
+        if grep -qw -- "$karg" <<<"$current"; then
+            log "Kernel arg already present: $karg"
+            return 0
+        fi
+
+        rpm-ostree kargs --append-if-missing="$karg"
+        log "Added kernel arg via rpm-ostree: $karg"
+        return 10
+    fi
+
+    if command -v grubby >/dev/null 2>&1; then
+        local current
+        current=$(grubby --info=ALL 2>/dev/null | grep -Eo 'resume=[^[:space:]"]+' | head -n1 || true)
+        if [[ "$current" == "$karg" ]]; then
+            log "Kernel arg already present: $karg"
+            return 0
+        fi
+
+        grubby --update-kernel=ALL --args="$karg"
+        log "Added kernel arg via grubby: $karg"
+        return 10
+    fi
+
+    log "No supported bootloader tool found (rpm-ostree/grubby)."
+    return 1
+}
+
+main() {
+    local swap_dev swap_uuid karg needs_reboot=0
+
+    swap_dev=$(find_swap_device || true)
+    if [[ -z "${swap_dev:-}" ]]; then
+        log "No non-zram swap device found; hibernate resume is not configured."
+        mark_done
+        exit 0
+    fi
+
+    if [[ ! -b "$swap_dev" ]]; then
+        log "Swap target is not a block device ($swap_dev); automatic resume setup skipped."
+        mark_done
+        exit 0
+    fi
+
+    swap_uuid=$(blkid -s UUID -o value "$swap_dev" 2>/dev/null || true)
+    if [[ -z "$swap_uuid" ]]; then
+        log "Could not read UUID for swap device $swap_dev; skipping resume kernel arg."
+        mark_done
+        exit 0
+    fi
+
+    karg="resume=UUID=$swap_uuid"
+    if add_resume_karg_if_needed "$karg"; then
+        :
+    else
+        rc=$?
+        if [[ $rc -eq 10 ]]; then
+            needs_reboot=1
+        fi
+    fi
+
+    if [[ $needs_reboot -eq 1 ]]; then
+        mkdir -p /var/lib/tblue
+        touch /var/lib/tblue/hibernate-reboot-required
+        log "Hibernate resume configured. Reboot required to apply new kernel arg."
+    fi
+
+    mark_done
+    log "Completed."
+}
+
+main "$@"

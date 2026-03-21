@@ -1,0 +1,12 @@
+polkit.addRule(function(action, subject) {
+    var allowed = [
+        "org.freedesktop.login1.hibernate",
+        "org.freedesktop.login1.hibernate-multiple-sessions",
+        "org.freedesktop.login1.suspend-then-hibernate",
+        "org.freedesktop.login1.suspend-then-hibernate-multiple-sessions"
+    ];
+
+    if (allowed.indexOf(action.id) >= 0 && subject.active && subject.local && subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});

@@ -30,21 +30,10 @@ tdp="unavailable"
 tdp_reason=""
 tdp_supported=0
 
-if command -v ryzenadj >/dev/null 2>&1; then
-    ryzenadj_info=$(ryzenadj --info 2>&1)
-    stapm_mw=$(printf '%s\n' "$ryzenadj_info" | awk -F': *' '/STAPM LIMIT/ {print $2; exit}' | grep -Eo '[0-9]+' | head -n1)
-    if [ -n "$stapm_mw" ]; then
-        tdp="$((stapm_mw / 1000))W"
-        tdp_supported=1
-    else
-        if printf '%s' "$ryzenadj_info" | grep -qi 'unsupported model\|Only Ryzen Mobile Series are supported'; then
-            tdp_reason="unsupported on this CPU"
-        fi
-    fi
-elif command -v amdctl >/dev/null 2>&1; then
-    amd_tdp=$(amdctl info 2>/dev/null | awk '/power limit/i {for (i=1; i<=NF; i++) if ($i ~ /^[0-9]+$/) {print $i; exit}}')
-    if [ -n "$amd_tdp" ]; then
-        tdp="${amd_tdp}W"
+if [ -x /etc/hypr/scripts/tdp-control.sh ]; then
+    current_tdp=$(/etc/hypr/scripts/tdp-control.sh current 2>/dev/null || true)
+    if [ -n "${current_tdp:-}" ] && [[ "$current_tdp" =~ ^[0-9]+$ ]]; then
+        tdp="${current_tdp}W"
         tdp_supported=1
     fi
 fi

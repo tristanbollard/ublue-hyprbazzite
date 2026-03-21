@@ -28,6 +28,63 @@ has_ryzenadj() { command -v ryzenadj >/dev/null 2>&1; }
 # Helper: check for AMD PBO/eco-mode
 has_amdctl() { command -v amdctl >/dev/null 2>&1; }
 
+find_sysfs_tdp_file() {
+    local f
+
+    f=$(find /sys/class/hwmon -type f -name 'power1_cap' 2>/dev/null | head -n1)
+    if [ -n "$f" ]; then
+        echo "$f"
+        return 0
+    fi
+
+    f=$(find /sys/class/powercap -type f -name 'constraint_0_power_limit_uw' 2>/dev/null | head -n1)
+    if [ -n "$f" ]; then
+        echo "$f"
+        return 0
+    fi
+
+    return 1
+}
+
+has_sysfs_tdp() {
+    local f
+    f=$(find_sysfs_tdp_file || true)
+    [ -n "$f" ]
+}
+
+supports_ryzenadj_control() {
+    local info
+    has_ryzenadj || return 1
+    info=$(ryzenadj --info 2>&1 || true)
+    printf '%s' "$info" | grep -qi 'STAPM LIMIT'
+}
+
+supports_amdctl_control() {
+    local info
+    has_amdctl || return 1
+    info=$(amdctl info 2>/dev/null || true)
+    echo "$info" | grep -qi 'power limit'
+}
+
+get_backend() {
+    if supports_ryzenadj_control; then
+        echo "ryzenadj"
+        return 0
+    fi
+
+    if supports_amdctl_control; then
+        echo "amdctl"
+        return 0
+    fi
+
+    if has_sysfs_tdp; then
+        echo "sysfs"
+        return 0
+    fi
+
+    return 1
+}
+
 is_int() {
     [[ "$1" =~ ^[0-9]+$ ]]
 }
@@ -115,14 +172,57 @@ list_tdps() {
 }
 
 get_tdp() {
-    if has_ryzenadj; then
-        ryzenadj --info | grep -E 'TDP|CPU Name'
-    elif has_amdctl; then
-        amdctl info | grep -i 'power limit\|cpu model'
-    else
-        echo "TDP control not supported on this system."
-        exit 1
-    fi
+    local backend cap_file
+
+    backend=$(get_backend || true)
+    case "$backend" in
+        ryzenadj)
+            ryzenadj --info | grep -E 'TDP|CPU Name'
+            ;;
+        amdctl)
+            amdctl info | grep -i 'power limit\|cpu model'
+            ;;
+        sysfs)
+            cap_file=$(find_sysfs_tdp_file || true)
+            if [ -z "$cap_file" ]; then
+                echo "TDP control not supported on this system."
+                exit 1
+            fi
+            echo "CPU Name: ${CPU_MODEL}"
+            echo "Current TDP: $(( $(cat "$cap_file") / 1000000 ))W"
+            echo "Backend: sysfs"
+            ;;
+        *)
+            echo "TDP control not supported on this system."
+            exit 1
+            ;;
+    esac
+}
+
+get_tdp_current_watts() {
+    local backend cap_file watts
+
+    backend=$(get_backend || true)
+    case "$backend" in
+        ryzenadj)
+            watts=$(ryzenadj --info 2>/dev/null | awk -F': *' '/STAPM LIMIT/ {print $2; exit}' | grep -Eo '[0-9]+' | head -n1)
+            [ -n "$watts" ] || return 1
+            echo $((watts / 1000))
+            ;;
+        amdctl)
+            watts=$(amdctl info 2>/dev/null | awk '/power limit/i {for (i=1; i<=NF; i++) if ($i ~ /^[0-9]+$/) {print $i; exit}}')
+            [ -n "$watts" ] || return 1
+            echo "$watts"
+            ;;
+        sysfs)
+            cap_file=$(find_sysfs_tdp_file || true)
+            [ -n "$cap_file" ] || return 1
+            echo $(( $(cat "$cap_file") / 1000000 ))
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 set_tdp() {
@@ -139,12 +239,31 @@ set_tdp() {
         exit 1
     fi
 
-    if has_ryzenadj; then
+    local backend cap_file cap_dir
+    backend=$(get_backend || true)
+
+    if [ "$backend" = "ryzenadj" ]; then
         sudo ryzenadj --stapm-limit=$((tdp_watts*1000)) --fast-limit=$((tdp_watts*1000)) --slow-limit=$((tdp_watts*1000))
         echo "Set TDP to $tdp_watts W (ryzenadj)"
-    elif has_amdctl; then
+    elif [ "$backend" = "amdctl" ]; then
         sudo amdctl set power-limit $tdp_watts
         echo "Set TDP to $tdp_watts W (amdctl)"
+    elif [ "$backend" = "sysfs" ]; then
+        cap_file=$(find_sysfs_tdp_file || true)
+        if [ -z "$cap_file" ]; then
+            echo "TDP control not supported on this system."
+            exit 1
+        fi
+
+        echo $((tdp_watts * 1000000)) | sudo tee "$cap_file" >/dev/null
+
+        # Mirror to power2_cap when available on hwmon-based devices.
+        cap_dir=$(dirname "$cap_file")
+        if [ -f "$cap_dir/power2_cap" ]; then
+            echo $((tdp_watts * 1000000)) | sudo tee "$cap_dir/power2_cap" >/dev/null
+        fi
+
+        echo "Set TDP to $tdp_watts W (sysfs)"
     else
         echo "TDP control not supported on this system."
         exit 1
@@ -197,8 +316,19 @@ case "$1" in
         detect_bounds
         echo "${MIN_TDP}-${MAX_TDP}"
         ;;
+    current)
+        get_tdp_current_watts
+        ;;
+    supports)
+        if get_backend >/dev/null 2>&1; then
+            echo "yes"
+            exit 0
+        fi
+        echo "no"
+        exit 1
+        ;;
     *)
-        echo "Usage: $0 get | set <watts> | profile <eco|balanced|performance> | list | bounds"
+        echo "Usage: $0 get | set <watts> | profile <eco|balanced|performance> | list | bounds | current | supports"
         exit 1
         ;;
 esac

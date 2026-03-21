@@ -62,7 +62,7 @@ else
 fi
 
 printf '{"text":"%s ","tooltip":"%s","class":"%s","alt":"%s"}\n' \
-    "$text" \
+    "$(json_escape "$text")" \
     "$(json_escape "$tooltip")" \
-    "$(json_escape "$profile")" \
-    "$(json_escape "$profile")"
+    "$(json_escape "${profile:-unknown}")" \
+    "$(json_escape "${profile:-unknown}")"

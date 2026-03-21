@@ -1,0 +1,11 @@
+[Unit]
+Description=Sync desktop configs from /usr/etc to /etc
+After=local-fs.target
+Before=display-manager.service sddm.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tblue-sync-desktop-config
+
+[Install]
+WantedBy=multi-user.target

@@ -24,8 +24,8 @@ RUN mkdir -p /usr/share/ublue-os && \
 
 RUN openssl x509 -in /usr/share/tblue-secureboot/secureboot.pem -outform DER -out /usr/share/tblue-secureboot/secureboot.der && \
     chmod 0644 /usr/share/tblue-secureboot/secureboot.pem /usr/share/tblue-secureboot/secureboot.der && \
-    chmod 0755 /usr/libexec/tblue-secureboot-firstboot /usr/libexec/tblue-hibernate-setup && \
-    systemctl enable tblue-secureboot-firstboot.service tblue-hibernate-setup.service
+    chmod 0755 /usr/libexec/tblue-secureboot-firstboot /usr/libexec/tblue-hibernate-setup /usr/libexec/tblue-sync-desktop-config && \
+    systemctl enable tblue-secureboot-firstboot.service tblue-hibernate-setup.service tblue-sync-desktop-config.service
 
 
 # Fix terra-mesa GPG key issue by disabling GPG check for the repo

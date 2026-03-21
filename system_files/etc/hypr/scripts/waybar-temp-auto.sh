@@ -97,7 +97,7 @@ done
 
 if [[ -z "$best_temp_mc" ]]; then
     text="N/A 󰔏"
-    tooltip=$'Temperature: unavailable\nNo valid sensors found'
+    printf -v tooltip 'Temperature: unavailable\nNo valid sensors found'
     class="missing"
 else
     temp_c=$((best_temp_mc / 1000))
@@ -113,7 +113,7 @@ else
     fi
 
     text="${temp_c}°C ${icon}"
-    tooltip=$'Temperature: '${temp_c}'°C\nSensor: '${best_source}
+    printf -v tooltip 'Temperature: %s°C\nSensor: %s' "$temp_c" "$best_source"
 fi
 
 printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' \

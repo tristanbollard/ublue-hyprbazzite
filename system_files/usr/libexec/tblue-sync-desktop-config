@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+log() {
+    echo "[tblue-sync-desktop-config] $*"
+}
+
+sync_tree() {
+    local src="$1"
+    local dst="$2"
+
+    if [[ ! -d "$src" ]]; then
+        log "Source does not exist, skipping: $src"
+        return 0
+    fi
+
+    mkdir -p "$(dirname "$dst")"
+    rm -rf "$dst"
+    cp -aT "$src" "$dst"
+    log "Synced $src -> $dst"
+}
+
+sync_tree /usr/etc/waybar /etc/waybar
+sync_tree /usr/etc/hypr /etc/hypr
+
+log "Completed."

@@ -28,8 +28,8 @@ RUN mkdir -p /usr/share/ublue-os && \
 
 RUN openssl x509 -in /usr/share/tblue-secureboot/secureboot.pem -outform DER -out /usr/share/tblue-secureboot/secureboot.der && \
     chmod 0644 /usr/share/tblue-secureboot/secureboot.pem /usr/share/tblue-secureboot/secureboot.der && \
-    chmod 0755 /usr/libexec/tblue-secureboot-firstboot /usr/libexec/tblue-hibernate-setup /usr/libexec/tblue-sync-desktop-config && \
-    systemctl enable tblue-secureboot-firstboot.service tblue-hibernate-setup.service tblue-sync-desktop-config.service
+    chmod 0755 /usr/libexec/tblue-secureboot-firstboot /usr/libexec/tblue-hibernate-setup /usr/libexec/tblue-sync-desktop-config /usr/libexec/tblue-hhd-enable-user && \
+    systemctl enable tblue-secureboot-firstboot.service tblue-hibernate-setup.service tblue-sync-desktop-config.service tblue-hhd-enable-user.service
 
 
 # Fix terra-mesa GPG key issue by disabling GPG check for the repo
@@ -87,6 +87,7 @@ RUN --mount=type=cache,dst=/var/cache \
     dnf5 -y copr enable sdegler/hyprland && \
     dnf5 -y copr enable erikreider/SwayNotificationCenter && \
     dnf5 -y copr enable fed500/wvkbd && \
+    dnf5 -y copr enable hhd-dev/hhd && \
     dnf5 install -y \
     hyprland \
     hyprland-guiutils \
@@ -101,6 +102,9 @@ RUN --mount=type=cache,dst=/var/cache \
     SwayNotificationCenter \
     wofi \
     wvkbd \
+    hhd \
+    adjustor \
+    hhd-ui
     xdg-desktop-portal-hyprland
 
 # Set zsh as default shell

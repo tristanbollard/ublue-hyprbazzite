@@ -1,0 +1,11 @@
+[Unit]
+Description=TBlue enable HHD user service
+After=local-fs.target
+ConditionPathExists=!/var/lib/tblue/hhd-enable-user.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/tblue-hhd-enable-user
+
+[Install]
+WantedBy=multi-user.target

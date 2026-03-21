@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+log() {
+    echo "[tblue-hhd-enable-user] $*"
+}
+
+mark_done() {
+    mkdir -p /var/lib/tblue
+    touch /var/lib/tblue/hhd-enable-user.done
+}
+
+if ! systemctl list-unit-files 'hhd@.service' >/dev/null 2>&1; then
+    log "hhd@.service not installed; skipping."
+    mark_done
+    exit 0
+fi
+
+target_user=$(getent passwd | awk -F: '$3 >= 1000 && $1 != "nobody" && $7 !~ /(nologin|false)$/ {print $1; exit}')
+if [[ -z "${target_user:-}" ]]; then
+    log "No regular user found yet; will retry on next boot."
+    exit 0
+fi
+
+if systemctl enable --now "hhd@${target_user}.service"; then
+    log "Enabled hhd@${target_user}.service"
+    mark_done
+    exit 0
+fi
+
+log "Failed enabling hhd@${target_user}.service"
+exit 1

@@ -104,7 +104,7 @@ RUN --mount=type=cache,dst=/var/cache \
     wvkbd \
     hhd \
     adjustor \
-    hhd-ui
+    hhd-ui \
     xdg-desktop-portal-hyprland
 
 # Set zsh as default shell

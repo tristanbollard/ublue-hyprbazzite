@@ -208,12 +208,15 @@ detect_bounds() {
     has_amdctl && detect_bounds_from_amdctl && return
     has_ryzenadj && detect_bounds_from_ryzenadj && return
 
-    # Keep defaults when the platform does not expose bounds.
-    return 0
+    # If control exists but no explicit bounds are exposed, keep defaults.
+    get_backend >/dev/null 2>&1 && return 0
+
+    # No backend means no valid bounds.
+    return 1
 }
 
 list_tdps() {
-    detect_bounds
+    detect_bounds || return 1
     for ((w=$MIN_TDP; w<=$MAX_TDP; w+=$STEP_TDP)); do
         echo "$w"
     done
@@ -361,11 +364,17 @@ case "$1" in
         list_tdps
         ;;
     bounds)
-        detect_bounds
+        detect_bounds || {
+            echo "N/A"
+            exit 1
+        }
         echo "${MIN_TDP}-${MAX_TDP}"
         ;;
     current)
-        get_tdp_current_watts
+        get_tdp_current_watts || {
+            echo "N/A"
+            exit 1
+        }
         ;;
     supports)
         if get_backend >/dev/null 2>&1; then

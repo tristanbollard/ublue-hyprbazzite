@@ -31,6 +31,16 @@ has_amdctl() { command -v amdctl >/dev/null 2>&1; }
 find_sysfs_tdp_file() {
     local f
 
+    # Prefer amdgpu hwmon nodes on AMD APUs/GPUs (Strix Halo path).
+    for h in /sys/class/hwmon/hwmon*; do
+        [ -d "$h" ] || continue
+        [ -r "$h/name" ] || continue
+        if [ "$(cat "$h/name" 2>/dev/null || true)" = "amdgpu" ] && [ -f "$h/power1_cap" ]; then
+            echo "$h/power1_cap"
+            return 0
+        fi
+    done
+
     f=$(find /sys/class/hwmon -type f -name 'power1_cap' 2>/dev/null | head -n1)
     if [ -n "$f" ]; then
         echo "$f"
@@ -102,7 +112,7 @@ set_bounds_if_valid() {
 }
 
 detect_bounds_from_sysfs() {
-    local min_file max_file min max
+    local min_file max_file default_file min max default cap_file cap_dir
 
     # Common powercap naming for modern AMD/Intel platforms
     min_file=$(find /sys/class/powercap -type f -name 'constraint_0_min_power_uw' 2>/dev/null | head -n1)
@@ -114,12 +124,50 @@ detect_bounds_from_sysfs() {
     fi
 
     # hwmon fallback when min/max are exported there
-    min_file=$(find /sys/class/hwmon -type f -name 'power1_cap_min' 2>/dev/null | head -n1)
-    max_file=$(find /sys/class/hwmon -type f -name 'power1_cap_max' 2>/dev/null | head -n1)
-    if [ -n "$min_file" ] && [ -n "$max_file" ]; then
-        min=$(( $(cat "$min_file" 2>/dev/null) / 1000000 ))
-        max=$(( $(cat "$max_file" 2>/dev/null) / 1000000 ))
-        set_bounds_if_valid "$min" "$max" && return 0
+    cap_file=$(find_sysfs_tdp_file || true)
+    if [ -n "$cap_file" ]; then
+        cap_dir=$(dirname "$cap_file")
+        min_file="$cap_dir/power1_cap_min"
+        max_file="$cap_dir/power1_cap_max"
+        default_file="$cap_dir/power1_cap_default"
+
+        [ -f "$min_file" ] || min_file=""
+        [ -f "$max_file" ] || max_file=""
+        [ -f "$default_file" ] || default_file=""
+
+        if [ -n "$max_file" ]; then
+            max=$(( $(cat "$max_file" 2>/dev/null) / 1000000 ))
+        else
+            max=""
+        fi
+
+        if [ -n "$min_file" ]; then
+            min=$(( $(cat "$min_file" 2>/dev/null) / 1000000 ))
+        else
+            min=""
+        fi
+
+        if [ -n "$default_file" ]; then
+            default=$(( $(cat "$default_file" 2>/dev/null) / 1000000 ))
+        else
+            default=""
+        fi
+
+        # Some platforms export 0W as minimum (sentinel/no lower policy bound).
+        # Use a practical UI floor in that case.
+        if ! is_int "$min" || [ "$min" -le 0 ]; then
+            min=15
+        fi
+
+        # Prefer default cap as user-facing max when available.
+        # This avoids listing boost/firmware headroom values as normal operating targets.
+        if is_int "$default" && [ "$default" -ge "$min" ]; then
+            max="$default"
+        fi
+
+        if set_bounds_if_valid "$min" "$max"; then
+            return 0
+        fi
     fi
 
     return 1

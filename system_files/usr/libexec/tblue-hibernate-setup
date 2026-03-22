@@ -80,6 +80,15 @@ create_swapfile_if_needed() {
         return 0
     fi
 
+    # Swapfile might exist from previous run but not be active yet; try to activate it
+    if [[ -f "$SWAPFILE_PATH" ]]; then
+        swapon "$SWAPFILE_PATH" >/dev/null 2>&1 || true
+        if swapon --noheadings --raw --output NAME 2>/dev/null | grep -qx "$SWAPFILE_PATH"; then
+            echo "$SWAPFILE_PATH"
+            return 0
+        fi
+    fi
+
     size_gib=$(swap_size_gib_from_ram)
 
     if [[ ! -f "$SWAPFILE_PATH" ]]; then

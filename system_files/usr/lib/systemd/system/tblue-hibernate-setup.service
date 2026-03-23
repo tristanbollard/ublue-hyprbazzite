@@ -8,7 +8,7 @@ Type=oneshot
 ExecStart=/usr/libexec/tblue-hibernate-setup
 RemainAfterExit=yes
 TimeoutSec=0
-StandardOutput=journal+console
+StandardOutput=journal
 StandardError=journal
 
 [Install]

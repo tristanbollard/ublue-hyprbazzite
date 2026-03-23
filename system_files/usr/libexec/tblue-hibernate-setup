@@ -44,9 +44,8 @@ ensure_swap_selinux_context() {
         return 0
     fi
 
-    semanage fcontext -a -t var_t "$SWAP_SUBVOL_PATH(/.*)?" 2>/dev/null || true
+    # Ensure the swapfile always has the correct SELinux context for hibernation
     semanage fcontext -a -t swapfile_t "$SWAPFILE_PATH" 2>/dev/null || true
-    restorecon -R "$SWAP_SUBVOL_PATH" 2>/dev/null || true
     restorecon "$SWAPFILE_PATH" 2>/dev/null || true
 }
 
@@ -76,6 +75,7 @@ create_swapfile_if_needed() {
     local size_gib fs_type
 
     if swapon --noheadings --raw --output NAME 2>/dev/null | grep -qx "$SWAPFILE_PATH"; then
+        ensure_swap_selinux_context
         echo "$SWAPFILE_PATH"
         return 0
     fi
@@ -83,6 +83,7 @@ create_swapfile_if_needed() {
     # Swapfile might exist from previous run but not be active yet; try to activate it
     if [[ -f "$SWAPFILE_PATH" ]]; then
         swapon "$SWAPFILE_PATH" >/dev/null 2>&1 || true
+        ensure_swap_selinux_context
         if swapon --noheadings --raw --output NAME 2>/dev/null | grep -qx "$SWAPFILE_PATH"; then
             echo "$SWAPFILE_PATH"
             return 0
@@ -133,13 +134,22 @@ create_swapfile_if_needed() {
 
 swap_target_uuid() {
     local target="$1"
-    local source fs_uuid luks_device luks_uuid
+    local btrfs_dev btrfs_uuid luks_device luks_uuid fs_uuid
 
-    # Detect LUKS-encrypted root (composefs/ostree with LUKS)
-    # /dev/mapper/luks-<UUID> where UUID is the LUKS partition UUID
+    # If swapfile is on Btrfs, get the parent FS UUID (not the LUKS UUID)
+    if [[ "$(findmnt -no FSTYPE -T "$target" 2>/dev/null)" == "btrfs" ]]; then
+        btrfs_dev=$(findmnt -no SOURCE -T "$target" | sed 's/\[.*//')
+        btrfs_uuid=$(btrfs filesystem show "$btrfs_dev" 2>/dev/null | awk '/uuid:/ {print $2; exit}')
+        if [[ -n "$btrfs_uuid" ]]; then
+            log "Detected Btrfs FS UUID for swapfile: $btrfs_uuid"
+            echo "$btrfs_uuid"
+            return 0
+        fi
+    fi
+
+    # Fallback: LUKS UUID if not Btrfs
     luks_device=$(ls /dev/mapper/luks-* 2>/dev/null | head -n1 || true)
     if [[ -n "$luks_device" ]]; then
-        # Extract UUID from device name: luks-b678311b-eea8-451c-a58f-1d6badae0024 -> b678311b-eea8-451c-a58f-1d6badae0024
         luks_uuid="${luks_device#/dev/mapper/luks-}"
         if blkid -U "$luks_uuid" >/dev/null 2>&1; then
             log "Detected LUKS partition UUID: $luks_uuid"

@@ -17,8 +17,9 @@ RUN checkmodule -M -m -o /tmp/tblue_hibernate.mod /usr/share/selinux/packages/tb
     semodule_package -o /usr/share/selinux/packages/tblue_hibernate.pp -m /tmp/tblue_hibernate.mod && \
     semodule -i /usr/share/selinux/packages/tblue_hibernate.pp
 
-# Ensure the initramfs is rebuilt with the resume module (for bootc/ostree)
-RUN rpm-ostree initramfs --enable --arg="--add" --arg="resume"
+# Rebuild the initramfs for the installed kernel(s) with the resume module
+RUN KVER=$(ls /lib/modules | head -n 1) && \
+    dracut --force --add "resume" /lib/modules/$KVER/initramfs.img $KVER
 
 RUN build_commit="${SHA_HEAD_SHORT:-unknown}" && \
     build_stamp="${BUILD_STAMP:-$(date -u +%d%m%y)}" && \

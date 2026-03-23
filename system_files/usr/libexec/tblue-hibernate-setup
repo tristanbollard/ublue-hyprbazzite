@@ -41,7 +41,7 @@ main() {
 
     # 2. Get the decrypted device path and physical offset
     local dec_uuid offset
-    dix rec_uuid=$(findmnt -no UUID -T "$SWAPFILE_PATH")
+    dec_uuid=$(findmnt -no UUID -T "$SWAPFILE_PATH")
 
     # Verify we didn't get an empty string
     if [[ -z "$dec_uuid" ]]; then

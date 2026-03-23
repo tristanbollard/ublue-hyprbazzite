@@ -7,9 +7,18 @@ FROM ghcr.io/ublue-os/bazzite:stable
 ARG SHA_HEAD_SHORT=unknown
 ARG BUILD_STAMP
 
+
 # Bazzite-style provisioning (ship defaults in /usr)
 COPY system_files /
 COPY secure-boot-keys/secureboot.crt /usr/share/tblue-secureboot/secureboot.pem
+
+# Compile and install the SELinux policy module for hibernation
+RUN checkmodule -M -m -o /tmp/tblue_hibernate.mod /usr/share/selinux/packages/tblue_hibernate.te && \
+    semodule_package -o /usr/share/selinux/packages/tblue_hibernate.pp -m /tmp/tblue_hibernate.mod && \
+    semodule -i /usr/share/selinux/packages/tblue_hibernate.pp
+
+# Ensure the initramfs is rebuilt with the resume module (for bootc/ostree)
+RUN rpm-ostree initramfs --enable --arg="--add" --arg="resume"
 
 RUN build_commit="${SHA_HEAD_SHORT:-unknown}" && \
     build_stamp="${BUILD_STAMP:-$(date -u +%d%m%y)}" && \

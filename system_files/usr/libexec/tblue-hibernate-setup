@@ -40,17 +40,22 @@ main() {
     fi
 
     # 2. Get the decrypted device path and physical offset
-    local dec_dev offset
-    dec_dev=$(findmnt -no SOURCE -T "$SWAP_SUBVOL_PATH")
-    offset=$(btrfs inspect-internal map-swapfile -r "$SWAPFILE_PATH" | head -n1)
+    local dec_uuid offset
+    dec_uuid=$(findmnt -no UUID -T "$SWAPFILE_PATH")
 
-    log "Targeting resume device: $dec_dev at offset: $offset"
+    # Verify we didn't get an empty string
+    if [[ -z "$dec_uuid" ]]; then
+        log "Error: Could not determine Decrypted UUID"
+        exit 1
+    fi    offset=$(btrfs inspect-internal map-swapfile -r "$SWAPFILE_PATH" | head -n1)
+
+    log "Targeting resume device: $dec_uuid at offset: $offset"
 
     # 3. Apply kargs safely
     # We use --replace to overwrite any old resume/offset attempts
     # and --append-if-missing for the safety flags.
     rpm-ostree kargs \
-        --replace="resume=$dec_dev" \
+        --replace="resume=$dec_uuid" \
         --replace="resume_offset=$offset" \
         --append-if-missing="rootwait" \
         --append-if-missing="resume_delay=5"

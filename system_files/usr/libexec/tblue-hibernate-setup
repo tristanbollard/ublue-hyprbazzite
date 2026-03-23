@@ -45,7 +45,7 @@ main() {
     offset=$(btrfs inspect-internal map-swapfile -r "$SWAPFILE_PATH" | head -n1)
 
     # Use rpm-ostree for the kargs - this works on bootc
-    rpm-ostree kargs --append-if-missing="resume=UUID=$uuid" --append-if-missing="resume_offset=$offset"
+    rpm-ostree kargs --append-if-missing="resume=UUID=$uuid" --append-if-missing="resume_offset=$offset" --append-if-missing="rootwait"
 }
 
 main "$@"

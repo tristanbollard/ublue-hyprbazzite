@@ -1,9 +1,13 @@
-module tblue_hibernate 1.0;
+module tblue_hibernate 1.2;
+
 require {
     type systemd_logind_t;
     type systemd_sleep_t;
     type swapfile_t;
     class dir { search read open };
+    class file { read write open getattr };
 }
+
 allow systemd_logind_t swapfile_t:dir { search read open };
 allow systemd_sleep_t swapfile_t:dir { search read open };
+allow systemd_sleep_t swapfile_t:file { read write open getattr };

@@ -19,7 +19,8 @@ RUN checkmodule -M -m -o /tmp/tblue_hibernate.mod /usr/share/selinux/packages/tb
 
 # Rebuild the initramfs for the installed kernel(s) with the resume module
 RUN KVER=$(ls /lib/modules | head -n 1) && \
-    dracut --force --no-hostonly --add "resume" /lib/modules/$KVER/initramfs.img $KVER
+    dracut --force --no-hostonly --add "resume btrfs" \
+    /lib/modules/$KVER/initramfs.img $KVER
 
 RUN build_commit="${SHA_HEAD_SHORT:-unknown}" && \
     build_stamp="${BUILD_STAMP:-$(date -u +%d%m%y)}" && \

@@ -81,6 +81,9 @@ jobs:
           image: ${{ env.IMAGE_NAME }}
           tags: latest
           oci: false
+          build-args: |
+            SHA_HEAD_SHORT=${{ github.sha }}
+            BUILD_STAMP=${{ github.run_id }}
 
       - name: Make image available to root podman storage
         run: |

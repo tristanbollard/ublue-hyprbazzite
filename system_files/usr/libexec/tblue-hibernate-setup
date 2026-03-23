@@ -34,18 +34,26 @@ create_swap_on_var() {
 main() {
     create_swap_on_var
 
-    # Add to fstab if missing
+    # 1. Add to fstab if missing
     if ! grep -q "$SWAPFILE_PATH" /etc/fstab; then
         echo "$SWAPFILE_PATH none swap defaults,nofail 0 0" >> /etc/fstab
     fi
 
-    # Set Kernel Args
-    local uuid offset
-    uuid=$(findmnt -no UUID -T "$SWAPFILE_PATH")
+    # 2. Get the decrypted device path and physical offset
+    local dec_dev offset
+    dec_dev=$(findmnt -no SOURCE -T "$SWAP_SUBVOL_PATH")
     offset=$(btrfs inspect-internal map-swapfile -r "$SWAPFILE_PATH" | head -n1)
 
-    # Use rpm-ostree for the kargs - this works on bootc
-    rpm-ostree kargs --append-if-missing="resume=UUID=$uuid" --append-if-missing="resume_offset=$offset" --append-if-missing="rootwait"
+    log "Targeting resume device: $dec_dev at offset: $offset"
+
+    # 3. Apply kargs safely
+    # We use --replace to overwrite any old resume/offset attempts
+    # and --append-if-missing for the safety flags.
+    rpm-ostree kargs \
+        --replace="resume=$dec_dev" \
+        --replace="resume_offset=$offset" \
+        --append-if-missing="rootwait" \
+        --append-if-missing="resume_delay=5"
 }
 
 main "$@"

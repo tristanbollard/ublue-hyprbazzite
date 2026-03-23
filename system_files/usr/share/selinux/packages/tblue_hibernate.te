@@ -1,4 +1,4 @@
-module tblue_hibernate 1.2;
+module tblue_hibernate 1.3;
 
 require {
     type systemd_logind_t;
@@ -8,6 +8,9 @@ require {
     class file { read write open getattr };
 }
 
+# Permission for logind to verify swap exists
 allow systemd_logind_t swapfile_t:dir { search read open };
+
+# Permission for systemd-sleep to write the hibernation image
 allow systemd_sleep_t swapfile_t:dir { search read open };
 allow systemd_sleep_t swapfile_t:file { read write open getattr };

@@ -352,32 +352,34 @@ main() {
 
     # Ensure swapfile is created and active, then robustly get UUID and offset
     debug "Starting main hibernation setup logic"
-    swap_target=""
+    # Always use the actual swapfile path for UUID and offset detection
+    # Always use $SWAPFILE_PATH for all further operations
     for i in {1..5}; do
-        debug "Attempt $i: Finding swap device..."
-        swap_target=$(find_swap_device || true)
-        debug "swap_target: $swap_target"
-        if [[ -z "${swap_target:-}" ]]; then
-            debug "No swap device found, trying to create swapfile..."
-            swap_target=$(create_swapfile_if_needed || true)
-            debug "create_swapfile_if_needed returned: $swap_target"
+        debug "Attempt $i: Ensuring swapfile exists and is active..."
+        if [[ ! -f "$SWAPFILE_PATH" ]]; then
+            debug "Swapfile does not exist, creating..."
+            create_swapfile_if_needed || true
         fi
-        if [[ -n "$swap_target" ]]; then
-            debug "Found or created swap device: $swap_target"
+        if swapon --noheadings --raw --output NAME 2>/dev/null | grep -qx "$SWAPFILE_PATH"; then
+            debug "Swapfile is active."
             break
+        else
+            debug "Swapfile not active, trying to activate..."
+            sudo swapon "$SWAPFILE_PATH" 2>/dev/null || true
         fi
         sleep 1
     done
-    if [[ -z "${swap_target:-}" ]]; then
-        log "No non-zram swap found and swapfile creation failed; hibernate resume is not configured."
+    if [[ ! -f "$SWAPFILE_PATH" ]]; then
+        log "Swapfile does not exist after retries; hibernate resume is not configured."
         mark_done
         exit 0
     fi
 
+    # Get UUID of parent filesystem for swapfile
     swap_uuid=""
     for i in {1..5}; do
-        debug "Attempt $i: Getting swap UUID for $swap_target..."
-        swap_uuid=$(swap_target_uuid "$swap_target" || true)
+        debug "Attempt $i: Getting swap UUID for $SWAPFILE_PATH..."
+        swap_uuid=$(findmnt -no UUID -T "$SWAPFILE_PATH" 2>/dev/null || true)
         debug "swap_uuid: $swap_uuid"
         if [[ -n "$swap_uuid" ]]; then
             debug "Got swap UUID: $swap_uuid"
@@ -386,7 +388,7 @@ main() {
         sleep 1
     done
     if [[ -z "$swap_uuid" ]]; then
-        log "Could not read UUID for swap target $swap_target after retries; skipping resume kernel arg."
+        log "Could not read UUID for swapfile $SWAPFILE_PATH after retries; skipping resume kernel arg."
         mark_done
         exit 0
     fi
@@ -405,32 +407,30 @@ main() {
         fi
     fi
 
-    if [[ -f "$swap_target" ]]; then
-        resume_offset=""
-        for i in {1..5}; do
-            debug "Attempt $i: Getting resume_offset for $swap_target..."
-            resume_offset=$(swapfile_resume_offset "$swap_target" || true)
-            debug "resume_offset: $resume_offset"
-            if [[ -n "$resume_offset" ]]; then
-                debug "Got resume_offset: $resume_offset"
-                break
-            fi
-            sleep 1
-        done
+    # Always attempt to set resume_offset for swapfile
+    resume_offset=""
+    for i in {1..5}; do
+        debug "Attempt $i: Getting resume_offset for $SWAPFILE_PATH..."
+        resume_offset=$(swapfile_resume_offset "$SWAPFILE_PATH" || true)
+        debug "resume_offset: $resume_offset"
         if [[ -n "$resume_offset" ]]; then
-            debug "Setting kernel arg: resume_offset=$resume_offset"
-            if add_resume_karg_if_needed "resume_offset=$resume_offset"; then
-                debug "Kernel arg set: resume_offset=$resume_offset"
-            else
-                rc=$?
-                debug "add_resume_karg_if_needed for resume_offset failed with rc=$rc"
-                if [[ $rc -eq 10 ]]; then
-                    needs_reboot=1
-                fi
-            fi
-        else
-            log "Could not determine resume_offset for swapfile ($swap_target) after retries; hibernate may not resume from swapfile."
+            debug "Got resume_offset: $resume_offset"
+            break
         fi
+        sleep 1
+    done
+    if [[ -n "$resume_offset" ]]; then
+        debug "Setting kernel arg: resume_offset=$resume_offset"
+        if add_resume_karg_if_needed "resume_offset=$resume_offset"; then
+            debug "Kernel arg set: resume_offset=$resume_offset"
+        else
+            rc=$?
+            debug "add_resume_karg_if_needed for resume_offset failed with rc=$rc"
+            if [[ $rc -eq 10 ]];n+                needs_reboot=1
+            fi
+        fi
+    else
+        log "Could not determine resume_offset for swapfile ($SWAPFILE_PATH) after retries; hibernate may not resume from swapfile."
     fi
 
     if [[ $needs_reboot -eq 1 ]]; then

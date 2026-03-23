@@ -150,6 +150,31 @@ add_resume_karg_if_needed() {
     return 10
 }
 
+# New function to handle the initramfs requirement for Atomic/Bazzite
+ensure_dracut_resume_module() {
+    local changed=0
+    
+    # 1. Create the dracut config file
+    if [[ ! -f /etc/dracut.conf.d/resume.conf ]]; then
+        log "Adding Dracut resume module configuration..."
+        mkdir -p /etc/dracut.conf.d
+        echo 'add_dracutmodules+=" resume "' > /etc/dracut.conf.d/resume.conf
+        changed=1
+    fi
+
+    # 2. Tell rpm-ostree to enable initramfs building with the resume module
+    # We use the --arg syntax which is more reliable on recent versions
+    if command -v rpm-ostree >/dev/null 2>&1; then
+        if ! rpm-ostree initramfs | grep -q "Enabled: yes"; then
+            log "Enabling rpm-ostree initramfs and adding resume module..."
+            rpm-ostree initramfs --enable --arg="--add" --arg="resume"
+            changed=1
+        fi
+    fi
+    
+    return $changed
+}
+
 main() {
     [[ $EUID -ne 0 ]] && echo "This script must be run as root" && exit 1
     
@@ -173,10 +198,15 @@ main() {
         elif [[ $? -eq 10 ]]; then needs_reboot=1; fi
     fi
 
+    # Ensure initramfs can actually handle the resume (fixes Black Screen)
+    if ensure_dracut_resume_module; then
+        needs_reboot=1
+    fi
+
     if [[ $needs_reboot -eq 1 ]]; then
         mkdir -p /var/lib/tblue
         touch /var/lib/tblue/hibernate-reboot-required
-        log "Configuration updated. REBOOT REQUIRED to apply kernel args."
+        log "Configuration updated. REBOOT REQUIRED to apply kernel args and initramfs changes."
     fi
 
     mark_done

@@ -146,6 +146,9 @@ jobs:
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           oci: false
+          build-args: |
+            SHA_HEAD_SHORT=${{ github.sha }}
+            BUILD_STAMP=${{ github.run_id }}
 
       # Rechunk is a script that we use on Universal Blue to make sure there isnt a single huge layer when your image gets published.
       # This does not make your image faster to download, just provides better resumability and fixes a few errors.

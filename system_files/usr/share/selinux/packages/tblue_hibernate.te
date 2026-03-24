@@ -1,22 +1,22 @@
-module tblue_hibernate 1.4;
+module tblue_hibernate 1.5;
 
 require {
     type systemd_sleep_t;
     type systemd_logind_t;
     type swapfile_t;
-    type devpts_t;
     class dir { search read open getattr };
     class file { read write open getattr ioctl lock };
+    # The 'secret sauce' for BTRFS/LUKS
+    class capability { sys_admin };
 }
 
-# 1. Allow logind to see the swap path
+# 1. Allow logind to verify the swap exists
 allow systemd_logind_t swapfile_t:dir { search read open getattr };
 allow systemd_logind_t swapfile_t:file { getattr };
 
-# 2. Allow systemd-sleep the heavy lifting
+# 2. Allow systemd-sleep to map and write the image
 allow systemd_sleep_t swapfile_t:dir { search read open getattr };
 allow systemd_sleep_t swapfile_t:file { read write open getattr ioctl lock };
 
-# 3. Required for BTRFS swapfile mapping (the 'Permission Denied' fix)
-# This allows the sleep process to ask the filesystem for the physical disk blocks
+# 3. Grant the capability to map block addresses on BTRFS
 allow systemd_sleep_t self:capability { sys_admin };

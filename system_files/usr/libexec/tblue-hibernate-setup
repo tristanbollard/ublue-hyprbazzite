@@ -25,6 +25,13 @@ create_swap_on_var() {
     chmod 600 "$SWAPFILE_PATH"
     restorecon -RF "$SWAP_SUBVOL_PATH"
     
+    if [ ! -d "/var/swap" ]; then
+        mkdir -p /var/swap
+        chcon -t swapfile_t /var/swap
+        # Make the label persistent across reboots
+        semanage fcontext -a -t swapfile_t "/var/swap(/.*)?" 2>/dev/null || true
+    fi
+    
     if ! swapon --show | grep -q "$SWAPFILE_PATH"; then
         mkswap "$SWAPFILE_PATH" 2>/dev/null || true
         swapon "$SWAPFILE_PATH"

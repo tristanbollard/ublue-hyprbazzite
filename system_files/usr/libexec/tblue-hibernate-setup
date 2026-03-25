@@ -54,3 +54,21 @@ else
 fi
 
 log "Hybrid sleep setup complete."
+
+# 5. Disable all wakeup sources except the power button
+log "Disabling all wakeup sources except the power button."
+if [[ -f /proc/acpi/wakeup ]]; then
+    # Get the power button device (usually PBTN or PWRB)
+    power_btns=$(awk '/PBTN|PWRB/ {print $1}' /proc/acpi/wakeup)
+    # Disable all other wakeup devices
+    grep enabled /proc/acpi/wakeup | awk '{print $1}' | while read dev; do
+        if ! echo "$power_btns" | grep -q "$dev"; then
+            echo "$dev" > /proc/acpi/wakeup
+            log "Disabled wakeup for $dev"
+        fi
+    done
+    log "Wakeup sources after filtering:"
+    cat /proc/acpi/wakeup >&2
+else
+    log "/proc/acpi/wakeup not found; skipping wakeup source filtering."
+fi

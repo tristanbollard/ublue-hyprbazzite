@@ -17,20 +17,6 @@ COPY secure-boot-keys/secureboot.crt /usr/share/tblue-secureboot/secureboot.pem
 # Note: On Bazzite/Fedora, 'checkpolicy' provides checkmodule
 RUN dnf install -y checkpolicy policycoreutils
 
-# 2. Compile the module
-# We place the final .pp file in /usr/share/selinux/packages/ where the system expects it
-RUN checkmodule -M -m -o /tmp/tblue_hibernate.mod /usr/share/selinux/packages/tblue_hibernate.te && \
-    semodule_package -o /usr/share/selinux/packages/tblue_hibernate.pp -m /tmp/tblue_hibernate.mod && \
-    rm /tmp/tblue_hibernate.mod
-
-# 3. Ensure the file has the correct permissions for the system to read it
-RUN chmod 644 /usr/share/selinux/packages/tblue_hibernate.pp
-
-# Rebuild the initramfs for the installed kernel(s) with the resume module
-RUN KVER=$(ls /lib/modules | head -n 1) && \
-    HOME=/tmp dracut --force --no-hostonly --add "resume btrfs base crypt" \
-    /lib/modules/$KVER/initramfs.img $KVER
-
 RUN build_commit="${SHA_HEAD_SHORT:-unknown}" && \
     build_stamp="${BUILD_STAMP:-$(date -u +%d%m%y)}" && \
     build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)" && \

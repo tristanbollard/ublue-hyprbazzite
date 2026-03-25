@@ -30,7 +30,7 @@ case "$action" in
     open)
         # Restore internal panel using preferred mode/position when lid reopens.
         if [[ -n "$internal_output" ]]; then
-            hyprctl keyword monitor "$internal_output,preferred,auto,1"
+            hyprctl reload
         fi
         ;;
     *)

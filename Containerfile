@@ -97,6 +97,9 @@ RUN chmod +x /usr/bin/wallpaper-cycle && \
                    tblue-hibernate-setup.service \
                    tblue-sync-desktop-config.service
 
+RUN mkdir -p /etc/dconf/db/distro.d/
+RUN cp /usr/lib/hyprbazzite/etc/dconf/db/distro.d/00-dracula-theme /etc/dconf/db/distro.d/
+
 RUN dconf update
 
 # 7. Final Cleanup for Linter

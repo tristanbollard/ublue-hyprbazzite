@@ -80,7 +80,7 @@ RUN chmod 0644 /usr/share/wayland-sessions/hyprland.desktop && \
     chmod 0644 /usr/share/wayland-sessions/hyprland-uwsm.desktop && \
     chmod -R 0755 /usr/share/sddm/themes && \
     chmod 0644 /usr/share/sddm/themes/hyprlockish/* && \
-    chmod +x /etc/hypr/scripts/*.sh
+    chmod +x /usr/lib/hyprbazzite/etc/hypr/scripts/*.sh && \
 
 RUN mkdir -p /etc/skel/.var/app/com.visualstudio.code/config/Code/User && \
     if [ -f /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json ]; then \

@@ -38,16 +38,6 @@ RUN --mount=type=cache,dst=/var/cache \
 # 3. Copy Files into image
 COPY system_files/usr/ /usr/
 
-RUN mkdir -p /usr/share/ublue-os && \
-    curl -fsSL -o /usr/share/ublue-os/sb_pubkey.der https://github.com/ublue-os/akmods/raw/main/certs/public_key.der && \
-    chmod 0644 /usr/share/ublue-os/sb_pubkey.der
-
-RUN openssl x509 -in /usr/share/tblue-secureboot/secureboot.pem -outform DER -out /usr/share/tblue-secureboot/secureboot.der && \
-    chmod 0644 /usr/share/tblue-secureboot/secureboot.pem /usr/share/tblue-secureboot/secureboot.der && \
-    chmod 0755 /usr/libexec/tblue-secureboot-firstboot /usr/libexec/tblue-hibernate-setup /usr/libexec/tblue-sync-desktop-config /usr/libexec/tblue-hhd-enable-user && \
-    systemctl enable tblue-secureboot-firstboot.service tblue-hibernate-setup.service tblue-sync-desktop-config.service tblue-hhd-enable-user.service
-
-
 # Fix terra-mesa GPG key issue by disabling GPG check for the repo
 RUN sed -i 's/^gpgcheck=1/gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true && \
     sed -i 's/^repo_gpgcheck=1/repo_gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true

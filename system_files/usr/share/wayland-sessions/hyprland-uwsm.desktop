@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Hyprland (UWSM)
+Comment=Hyprland managed by Universal Wayland Session Manager
+Exec=uwsm start -- start-hyprland -- --config /etc/hypr/hyprland.conf
+Type=Application
+DesktopNames=Hyprland

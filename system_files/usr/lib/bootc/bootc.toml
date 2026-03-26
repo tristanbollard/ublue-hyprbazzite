@@ -1,0 +1,13 @@
+[[customizations.filesystem]]
+mountpoint = "/boot"
+minsize = "1 GiB"
+type = "ext4"
+
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = "20 GiB"
+type = "xfs"
+
+[[customizations.filesystem]]
+minsize = "8 GiB"
+type = "swap"

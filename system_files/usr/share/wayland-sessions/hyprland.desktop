@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Hyprland
+Comment=Hyprland (direct)
+Exec=start-hyprland -- --config /etc/hypr/hyprland.conf
+Type=Application
+DesktopNames=Hyprland

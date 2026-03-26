@@ -84,10 +84,9 @@ RUN chmod 0644 /usr/share/wayland-sessions/hyprland.desktop && \
 
 RUN mkdir -p /etc/skel/.var/app/com.visualstudio.code/config/Code/User && \
     if [ -f /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json ]; then \
-    jq '. + {"terminal.integrated.defaultProfile.linux": "zsh-host", "terminal.integrated.profiles.linux": (.terminal.integrated.profiles.linux // {}) + {"zsh-host": {"path": "flatpak-spawn", "args": ["--host", "env", "TERM=xterm-256color", "zsh", "-i"]}}}' /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json > /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp && \
-    mv /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json; \
-    else \
-    printf '{\n  "terminal.integrated.defaultProfile.linux": "zsh-host",\n  "terminal.integrated.profiles.linux": {\n    "zsh-host": {\n      "path": "flatpak-spawn",\n      "args": ["--host", "env", "TERM=xterm-256color", "zsh", "-i"]\n    }\n  }\n}\n' > /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json; \
+        jq '. + {"terminal.integrated.defaultProfile.linux": "zsh-host", "terminal.integrated.profiles.linux": (.terminal.integrated.profiles.linux // {}) + {"zsh-host": {"path": "flatpak-spawn", "args": ["--host", "env", "TERM=xterm-256color", "zsh", "-i"]}}}' \
+        /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json > /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp && \
+        mv /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json; \
     fi
 
 # 5. Permissions and Service Enablement

@@ -112,7 +112,12 @@ RUN mkdir -p /etc/dconf/db/distro.d/ && \
     cp /usr/lib/hyprbazzite/etc/dconf/db/distro.d/00-dracula-theme /etc/dconf/db/distro.d/
 
 # 9. Final Cleanup
-RUN rm -rf /var/lib/dnf /var/log/dnf* /var/log/hawkey.log /var/lib/blueman && \
+RUN rm -rf /var/cache/libdnf5/* && \
+    rm -rf /var/lib/dnf && \
+    rm -rf /var/lib/rpm/__db.* && \
+    rm -rf /var/log/dnf* && \
+    rm -rf /var/log/hawkey.log && \
+    rm -rf /var/lib/blueman && \
     find /run -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true && \
     find /tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true && \
     bootc container lint

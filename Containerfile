@@ -43,9 +43,17 @@ RUN sed -i 's/^gpgcheck=1/gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/n
     sed -i 's/^repo_gpgcheck=1/repo_gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true
 
 
-# 4. Handle the "Skel"
-RUN mkdir -p /usr/etc/skel && \
-    cp -af /usr/lib/hyprbazzite/etc/skel/. /usr/etc/skel/
+# 4. IMPLEMENTING LIVE SYMLINKS (Option 1)
+# We create a global 'source of truth' for all configs in /usr/share
+RUN mkdir -p /usr/share/hyprbazzite/config && \
+    cp -af /usr/lib/hyprbazzite/etc/skel/.config/. /usr/share/hyprbazzite/config/
+
+# Now we clear the skel and replace folders with symlinks to /usr/share
+# This covers Hyprland, Waybar, Kitty, SwayNC, Wofi, etc.
+RUN mkdir -p /usr/etc/skel/.config && \
+    for dir in $(ls /usr/share/hyprbazzite/config/); do \
+        ln -s /usr/share/hyprbazzite/config/$dir /usr/etc/skel/.config/$dir; \
+    done
 
 # 5. Manage Flatpaks (Including adding Hijack)
 RUN flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo && \
@@ -84,12 +92,10 @@ RUN chmod 0644 /usr/share/wayland-sessions/hyprland.desktop && \
     chmod 0644 /usr/share/sddm/themes/hyprlockish/* && \
     chmod +x /usr/lib/hyprbazzite/etc/hypr/scripts/*.sh
 
-RUN mkdir -p /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User && \
-    if [ -f /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json ]; then \
-        jq '. + {"terminal.integrated.defaultProfile.linux": "zsh-host", "terminal.integrated.profiles.linux": (.terminal.integrated.profiles.linux // {}) + {"zsh-host": {"path": "flatpak-spawn", "args": ["--host", "env", "TERM=xterm-256color", "zsh", "-i"]}}}' \
-        /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json > /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp && \
-        mv /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json; \
-    fis
+RUN mkdir -p /usr/share/hyprbazzite/vscode && \
+    echo '{"terminal.integrated.defaultProfile.linux": "zsh-host"}' > /usr/share/hyprbazzite/vscode/settings.json && \
+    mkdir -p /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User && \
+    ln -s /usr/share/hyprbazzite/vscode/settings.json /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json
 
 # 5. Permissions and Service Enablement
 RUN chmod +x /usr/bin/wallpaper-cycle && \

@@ -3,7 +3,7 @@ FROM scratch AS ctx
 COPY build_files /
 
 # Base Image
-FROM ghcr.io/ublue-os/bazzite:stable
+FROM ghcr.io/ublue-os/bazzite-main:stable
 ARG SHA_HEAD_SHORT=unknown
 ARG BUILD_STAMP
 
@@ -22,7 +22,7 @@ RUN --mount=type=cache,dst=/var/cache \
     dnf5 -y copr enable fed500/wvkbd && \
     dnf5 -y copr enable hhd-dev/hhd && \
     dnf5 -y copr enable atim/starship && \
-    dnf5 -y remove akonadi-server sddm baloo kate dolphin konsole khelpcenter "plasma-*" "kde*" "gnome-*" "kf5-*" "kf6-*" && \
+    dnf5 -y remove --setopt=protected_packages= akonadi-server sddm baloo kate dolphin konsole khelpcenter "plasma-*" "kde*" "gnome-*" "kf5-*" "kf6-*" && \
     dnf5 -y install --skip-unavailable \
     hyprland hyprland-guiutils hyprlock hypridle hyprpaper uwsm hyprland-uwsm \
     swww waybar SwayNotificationCenter wofi wvkbd hhd adjustor hhd-ui lact \
@@ -44,7 +44,8 @@ RUN sed -i 's/^gpgcheck=1/gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/n
 
 
 # 4. Handle the "Skel"
-RUN cp -af /usr/lib/hyprbazzite/etc/skel/. /etc/skel/
+RUN mkdir -p /usr/etc/skel && \
+    cp -af /usr/lib/hyprbazzite/etc/skel/. /usr/etc/skel/
 
 # 5. Manage Flatpaks (Including adding Hijack)
 RUN flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo && \
@@ -57,10 +58,11 @@ RUN flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.
 # 6. Setup user defaults and customization
 RUN dnf5 install -y zsh && \
     usermod -s /bin/zsh root && \
-    mkdir -p /etc/default && \
-    echo 'SHELL=/bin/zsh' >> /etc/default/useradd
+    mkdir -p /usr/etc/default && \
+    echo 'SHELL=/bin/zsh' >> /usr/etc/default/useradd
 
-RUN echo 'QT_QPA_PLATFORMTHEME=qt5ct' >> /etc/environment
+RUN mkdir -p /usr/lib/environment.d/ && \
+    echo 'QT_QPA_PLATFORMTHEME=qt5ct' >> /usr/lib/environment.d/10-qtct.conf
 
 RUN curl -L -o /tmp/jb-mono.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip && \
     unzip -o /tmp/jb-mono.zip -d /usr/share/fonts/ && \
@@ -82,27 +84,28 @@ RUN chmod 0644 /usr/share/wayland-sessions/hyprland.desktop && \
     chmod 0644 /usr/share/sddm/themes/hyprlockish/* && \
     chmod +x /usr/lib/hyprbazzite/etc/hypr/scripts/*.sh
 
-RUN mkdir -p /etc/skel/.var/app/com.visualstudio.code/config/Code/User && \
-    if [ -f /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json ]; then \
+RUN mkdir -p /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User && \
+    if [ -f /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json ]; then \
         jq '. + {"terminal.integrated.defaultProfile.linux": "zsh-host", "terminal.integrated.profiles.linux": (.terminal.integrated.profiles.linux // {}) + {"zsh-host": {"path": "flatpak-spawn", "args": ["--host", "env", "TERM=xterm-256color", "zsh", "-i"]}}}' \
-        /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json > /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp && \
-        mv /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json; \
-    fi
+        /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json > /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp && \
+        mv /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json.tmp /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json; \
+    fis
 
 # 5. Permissions and Service Enablement
 RUN chmod +x /usr/bin/wallpaper-cycle && \
     find /usr/libexec/ -type f -exec chmod +x {} + && \
     find /usr/lib/hyprbazzite/etc/hypr/scripts/ -type f -exec chmod +x {} + && \
-    systemctl enable hhd.service sddm.service \
-                   tblue-hibernate-setup.service \
-                   tblue-sync-desktop-config.service
+    mkdir -p /usr/lib/systemd/system-preset && \
+    echo "enable hhd.service" >> /usr/lib/systemd/system-preset/50-hyprbazzite.preset && \
+    echo "enable sddm.service" >> /usr/lib/systemd/system-preset/50-hyprbazzite.preset && \
+    echo "enable tblue-hibernate-setup.service" >> /usr/lib/systemd/system-preset/50-hyprbazzite.preset && \
+    echo "enable tblue-sync-desktop-config.service" >> /usr/lib/systemd/system-preset/50-hyprbazzite.preset
 
-RUN mkdir -p /etc/dconf/db/distro.d/
-RUN cp /usr/lib/hyprbazzite/etc/dconf/db/distro.d/00-dracula-theme /etc/dconf/db/distro.d/
 
-RUN dconf update
+RUN mkdir -p /etc/dconf/db/distro.d/ && \
+    cp /usr/lib/hyprbazzite/etc/dconf/db/distro.d/00-dracula-theme /etc/dconf/db/distro.d/
 
-# 7. Final Cleanup for Linter
+# 9. Final Cleanup
 RUN rm -rf /var/lib/dnf /var/log/dnf* /var/log/hawkey.log /var/lib/blueman && \
     find /run -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true && \
     find /tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true && \

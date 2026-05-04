@@ -38,25 +38,24 @@ RUN --mount=type=cache,dst=/var/cache \
 # 3. Copy Files into image
 COPY system_files/usr/ /usr/
 
-# Fix terra-mesa GPG key issue by disabling GPG check for the repo
+# Fix terra-mesa GPG key issue
 RUN sed -i 's/^gpgcheck=1/gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true && \
     sed -i 's/^repo_gpgcheck=1/repo_gpgcheck=0/' /etc/yum.repos.d/terra-mesa.repo 2>/dev/null || true
 
-
-# 4. IMPLEMENTING LIVE SYMLINKS (Option 1)
-# We create a global 'source of truth' for all configs in /usr/share
+# 4. IMPLEMENTING LIVE SYMLINKS (Back to /etc for bootc compliance)
 RUN mkdir -p /usr/share/hyprbazzite/config && \
     cp -af /usr/lib/hyprbazzite/etc/skel/.config/. /usr/share/hyprbazzite/config/
 
-# Now we clear the skel and replace folders with symlinks to /usr/share
-# This covers Hyprland, Waybar, Kitty, SwayNC, Wofi, etc.
-RUN mkdir -p /usr/etc/skel/.config && \
+# bootc wants us to use /etc/skel, not /usr/etc/skel
+RUN mkdir -p /etc/skel/.config && \
     for dir in $(ls /usr/share/hyprbazzite/config/); do \
-        ln -s /usr/share/hyprbazzite/config/$dir /usr/etc/skel/.config/$dir; \
+        ln -s /usr/share/hyprbazzite/config/$dir /etc/skel/.config/$dir; \
     done
 
-# 5. Manage Flatpaks (Including adding Hijack)
-RUN flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo && \
+# 5. Manage Flatpaks (Modified to avoid polluting /var)
+# We place the remote file in /etc instead of running 'flatpak remote-add'
+RUN mkdir -p /etc/flatpak/remotes.d && \
+    curl -L https://flathub.org/repo/flathub.flatpakrepo -o /etc/flatpak/remotes.d/flathub.flatpakrepo && \
     flatpak uninstall -y org.mozilla.firefox org.gnome.* 2>/dev/null || true && \
     chmod +x /usr/libexec/bazzite-flatpak-hijack.sh && \
     chmod +x /usr/libexec/bazzite-flatpak-manager && \
@@ -66,8 +65,8 @@ RUN flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.
 # 6. Setup user defaults and customization
 RUN dnf5 install -y zsh && \
     usermod -s /bin/zsh root && \
-    mkdir -p /usr/etc/default && \
-    echo 'SHELL=/bin/zsh' >> /usr/etc/default/useradd
+    mkdir -p /etc/default && \
+    echo 'SHELL=/bin/zsh' >> /etc/default/useradd
 
 RUN mkdir -p /usr/lib/environment.d/ && \
     echo 'QT_QPA_PLATFORMTHEME=qt5ct' >> /usr/lib/environment.d/10-qtct.conf
@@ -92,12 +91,13 @@ RUN chmod 0644 /usr/share/wayland-sessions/hyprland.desktop && \
     chmod 0644 /usr/share/sddm/themes/hyprlockish/* && \
     chmod +x /usr/lib/hyprbazzite/etc/hypr/scripts/*.sh
 
+# VS Code Live Sync (Pointed to /etc/skel)
 RUN mkdir -p /usr/share/hyprbazzite/vscode && \
     echo '{"terminal.integrated.defaultProfile.linux": "zsh-host"}' > /usr/share/hyprbazzite/vscode/settings.json && \
-    mkdir -p /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User && \
-    ln -s /usr/share/hyprbazzite/vscode/settings.json /usr/etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json
+    mkdir -p /etc/skel/.var/app/com.visualstudio.code/config/Code/User && \
+    ln -s /usr/share/hyprbazzite/vscode/settings.json /etc/skel/.var/app/com.visualstudio.code/config/Code/User/settings.json
 
-# 5. Permissions and Service Enablement
+# 7. Permissions and Service Enablement
 RUN chmod +x /usr/bin/wallpaper-cycle && \
     find /usr/libexec/ -type f -exec chmod +x {} + && \
     find /usr/lib/hyprbazzite/etc/hypr/scripts/ -type f -exec chmod +x {} + && \
@@ -107,17 +107,16 @@ RUN chmod +x /usr/bin/wallpaper-cycle && \
     echo "enable tblue-hibernate-setup.service" >> /usr/lib/systemd/system-preset/50-hyprbazzite.preset && \
     echo "enable tblue-sync-desktop-config.service" >> /usr/lib/systemd/system-preset/50-hyprbazzite.preset
 
-
+# Dconf Source
 RUN mkdir -p /etc/dconf/db/distro.d/ && \
     cp /usr/lib/hyprbazzite/etc/dconf/db/distro.d/00-dracula-theme /etc/dconf/db/distro.d/
 
-# 9. Final Cleanup
-RUN rm -rf /var/cache/libdnf5/* && \
+# 8. Scorched Earth Cleanup for /var (The Linter's main enemy)
+RUN rm -rf /var/lib/flatpak/* && \
+    rm -rf /var/cache/libdnf5/* && \
     rm -rf /var/lib/dnf && \
-    rm -rf /var/lib/rpm/__db.* && \
     rm -rf /var/log/dnf* && \
     rm -rf /var/log/hawkey.log && \
-    rm -rf /var/lib/blueman && \
     find /run -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true && \
     find /tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true && \
     bootc container lint

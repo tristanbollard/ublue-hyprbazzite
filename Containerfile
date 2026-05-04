@@ -3,7 +3,7 @@ FROM scratch AS ctx
 COPY build_files /
 
 # Base Image
-FROM ghcr.io/ublue-os/bazzite-main:stable
+FROM ghcr.io/ublue-os/bazzite:stable
 ARG SHA_HEAD_SHORT=unknown
 ARG BUILD_STAMP
 

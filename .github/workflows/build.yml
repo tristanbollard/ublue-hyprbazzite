@@ -80,8 +80,8 @@ jobs:
       - name: Set matrix
         id: set
         run: |
-          nvidia='{"variant":"nvidia","base_image":"ghcr.io/ublue-os/bazzite-nvidia-open:stable-44.20260902","tag_suffix":"-nvidia","primary_tag":"latest-nvidia"}'
-          main='{"variant":"main","base_image":"ghcr.io/ublue-os/bazzite:stable-44.20260902","tag_suffix":"","primary_tag":"latest"}'
+          nvidia='{"variant":"nvidia","base_image":"ghcr.io/ublue-os/bazzite-nvidia-open:stable-44.20260907","tag_suffix":"-nvidia","primary_tag":"latest-nvidia"}'
+          main='{"variant":"main","base_image":"ghcr.io/ublue-os/bazzite:stable-44.20260907","tag_suffix":"","primary_tag":"latest"}'
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "matrix={\"include\":[${main}]}" >> "$GITHUB_OUTPUT"
           else

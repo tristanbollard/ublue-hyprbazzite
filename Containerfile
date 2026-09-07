@@ -9,7 +9,7 @@
 # The tag is PINNED (not floating :stable) so Renovate can open PRs bumping the
 # date-stamped tag — that's what makes upstream base updates visible/reviewable.
 # Declared before the first FROM so it can be referenced in the final FROM.
-ARG BASE_IMAGE=ghcr.io/ublue-os/bazzite:stable-44.20260902
+ARG BASE_IMAGE=ghcr.io/ublue-os/bazzite:stable-44.20260907
 
 # ---------------------------------------------------------------------------
 # Stage 1: Download external assets (fonts, themes)
